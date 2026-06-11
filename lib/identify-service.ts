@@ -54,6 +54,35 @@ const MOCK_RESULTS: Omit<
         imageUrl: '/bags/alt-2.png',
       },
     ],
+    sources: [
+      {
+        sourceName: 'Official Site',
+        brand: 'Louis Vuitton',
+        bagName: 'Neverfull MM Tote in Monogram Canvas',
+        imageUrl: '/bags/reference-1.png',
+        price: '$1,690',
+        rating: null,
+        url: 'https://us.louisvuitton.com/eng-us/products/neverfull-mm-monogram-canvas',
+      },
+      {
+        sourceName: 'eBay',
+        brand: 'Louis Vuitton',
+        bagName: 'Louis Vuitton Neverfull MM Monogram – Authentic Pre-Owned',
+        imageUrl: '/bags/reference-2.png',
+        price: '$850 – $1,350',
+        rating: 4.8,
+        url: 'https://www.ebay.com/sch/i.html?_nkw=louis+vuitton+neverfull+mm',
+      },
+      {
+        sourceName: 'Farfetch',
+        brand: 'Louis Vuitton',
+        bagName: 'Pre-owned Neverfull MM tote bag',
+        imageUrl: '/bags/reference-3.png',
+        price: '$950 – $1,500',
+        rating: 4.6,
+        url: 'https://www.farfetch.com/shopping/women/louis-vuitton/bags/items.aspx',
+      },
+    ],
   },
 ]
 
@@ -76,7 +105,8 @@ export async function identifyHandbag(
   const form = new FormData()
   form.append('image', imageFile)
   
-  const res = await fetch('/api/v1/identify', {
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+  const res = await fetch(`${baseUrl}/api/v1/identify`, {
     method: 'POST',
     body: form,
   })
@@ -113,7 +143,8 @@ export async function identifyHandbag(
 export async function submitIdentificationFeedback(
   payload: FeedbackPayload,
 ): Promise<{ ok: true }> {
-  const res = await fetch('/api/v1/feedback', {
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+  const res = await fetch(`${baseUrl}/api/v1/feedback`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

@@ -15,8 +15,13 @@ export interface AlternativeMatch {
   imageUrl: string
 }
 
-export interface Source {
-  name: string
+export interface ShoppingSource {
+  sourceName: string
+  brand: string
+  bagName: string
+  imageUrl: string
+  price?: string | null
+  rating?: number | null
   url: string
 }
 
@@ -31,7 +36,7 @@ export interface BagIdentificationResult {
   confidence: number // 0 - 100
   referenceImages: ReferenceImage[]
   alternativeMatches: AlternativeMatch[]
-  sources: Source[]
+  sources: ShoppingSource[]
   /** Data URL of the user-uploaded image, used for previews + history. */
   uploadedImage?: string
   createdAt: string // ISO timestamp

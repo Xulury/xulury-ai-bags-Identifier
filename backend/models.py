@@ -13,8 +13,13 @@ class AlternativeMatch(BaseModel):
     confidence: int
     imageUrl: str
 
-class Source(BaseModel):
-    name: str
+class ShoppingSource(BaseModel):
+    sourceName: str
+    brand: str
+    bagName: str
+    imageUrl: str
+    price: Optional[str] = None
+    rating: Optional[float] = None
     url: str
 
 class BagIdentificationResult(BaseModel):
@@ -28,7 +33,7 @@ class BagIdentificationResult(BaseModel):
     confidence: int
     referenceImages: List[ReferenceImage]
     alternativeMatches: List[AlternativeMatch]
-    sources: List[Source] = Field(default_factory=list)
+    sources: List[ShoppingSource] = Field(default_factory=list)
     uploadedImage: Optional[str] = None
     createdAt: str
 

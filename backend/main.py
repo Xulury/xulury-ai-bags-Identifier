@@ -31,7 +31,7 @@ async def identify_endpoint(image: UploadFile = File(...)):
         image_url = upload_image(contents, image.filename or "uploaded_image", image.content_type)
 
         # Call AI Service
-        result = identify_bag(contents, image.content_type)
+        result = identify_bag(contents, image.content_type, image_url)
         
         # Set the uploadedImage URL to the Supabase URL if successful
         if image_url:

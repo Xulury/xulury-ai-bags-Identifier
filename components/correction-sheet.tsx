@@ -50,10 +50,10 @@ export function CorrectionSheet({
       <DialogContent className="top-auto bottom-0 left-1/2 max-w-full -translate-y-0 rounded-b-none rounded-t-2xl data-closed:slide-out-to-bottom data-open:slide-in-from-bottom sm:top-1/2 sm:bottom-auto sm:max-w-md sm:-translate-y-1/2 sm:rounded-2xl sm:data-closed:slide-out-to-bottom-0 sm:data-open:slide-in-from-bottom-0">
         <DialogHeader>
           <DialogTitle className="font-serif text-lg">
-            Suggest a correction
+            Manual Selection
           </DialogTitle>
           <DialogDescription>
-            Help us improve future results by telling us the correct details.
+            Select the correct bag manually to improve future results.
           </DialogDescription>
         </DialogHeader>
 

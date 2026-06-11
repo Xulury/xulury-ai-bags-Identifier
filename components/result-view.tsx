@@ -5,16 +5,19 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Check,
+  SlidersHorizontal,
   PencilLine,
   RotateCcw,
   Share2,
   ArrowLeft,
+  Info,
 } from 'lucide-react'
 import { AppShell } from '@/components/app-shell'
 import { ResultCard } from '@/components/result-card'
 import { ReferenceImageCarousel } from '@/components/reference-image-carousel'
 import { AlternativeMatchCard } from '@/components/alternative-match-card'
 import { CorrectionSheet } from '@/components/correction-sheet'
+import { ShoppingSourceTile } from '@/components/shopping-source-tile'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -140,15 +143,31 @@ export function ResultView() {
                   <Check className="size-4" aria-hidden="true" />
                   Confirm Match
                 </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="h-12 rounded-full"
-                  onClick={() => setCorrectionOpen(true)}
-                >
-                  <PencilLine className="size-4" aria-hidden="true" />
-                  Suggest a Correction
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="h-12 flex-1 rounded-full"
+                    onClick={() => setCorrectionOpen(true)}
+                  >
+                    <SlidersHorizontal className="size-4" aria-hidden="true" />
+                    Manual Selection
+                  </Button>
+                  {/* Info tooltip */}
+                  <div className="group relative flex shrink-0 items-center justify-center">
+                    <button
+                      type="button"
+                      className="flex size-8 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      aria-label="About manual selection"
+                    >
+                      <Info className="size-3.5" aria-hidden="true" />
+                    </button>
+                    <div className="pointer-events-none absolute bottom-full right-0 z-50 mb-2 w-56 rounded-xl border border-border bg-popover p-3 text-xs leading-relaxed text-popover-foreground shadow-lg opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                      In case you get wrong identification, please select manually to choose the correct bag.
+                      <div className="absolute right-3 top-full h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-border" />
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="flex gap-3">
                 <Button
@@ -188,20 +207,9 @@ export function ResultView() {
                 <h2 className="mb-3 font-serif text-xl font-semibold">
                   Where to find it
                 </h2>
-                <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {result.sources.map((source, idx) => (
-                    <a
-                      key={idx}
-                      href={source.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between rounded-xl border border-border bg-card p-4 transition-colors hover:bg-accent hover:text-accent-foreground"
-                    >
-                      <span className="font-medium">{source.name}</span>
-                      <span className="text-xs text-muted-foreground underline underline-offset-2">
-                        View source
-                      </span>
-                    </a>
+                    <ShoppingSourceTile key={idx} source={source} />
                   ))}
                 </div>
               </section>
