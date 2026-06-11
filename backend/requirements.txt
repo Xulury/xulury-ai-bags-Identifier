@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-multipart
+supabase
+google-genai
+pydantic
+python-dotenv
+duckduckgo-search
+httpx
