@@ -56,11 +56,13 @@ def _generate_and_cache_image(prompt: str, fallback_url: str) -> str:
 
 
 def identify_bag(image_bytes: bytes, mime_type: str, uploaded_image_url: str = None) -> BagIdentificationResult:
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         print("Warning: GEMINI_API_KEY not set. Using mock response.")
         return _mock_response()
-
+    
     client = genai.Client(api_key=api_key)
 
     prompt = """

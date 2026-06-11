@@ -43,8 +43,10 @@ async def identify_endpoint(image: UploadFile = File(...)):
         return result
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"Error in identify_endpoint: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error during identification.")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/v1/feedback")
 async def feedback_endpoint(payload: FeedbackPayload):

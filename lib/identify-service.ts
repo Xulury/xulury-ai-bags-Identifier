@@ -92,9 +92,11 @@ const MOCK_RESULTS: Omit<
  * MOCK IMPLEMENTATION — returns realistic data after a short delay.
  *
  * Future backend integration:
- *   const form = new FormData()
- *   form.append('image', imageFile)
- *   const res = await fetch('/api/v1/identify', { method: 'POST', body: form })
+ *   const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+  const res = await fetch(`${baseUrl}/api/v1/identify`, {
+    method: 'POST',
+    body: form,
+  })
  *   return (await res.json()) as BagIdentificationResult
  *
  * Endpoint: POST /api/v1/identify
