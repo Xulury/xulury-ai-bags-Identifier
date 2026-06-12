@@ -1,1 +1,1 @@
-import os, sys; from dotenv import load_dotenv; load_dotenv(); from services.ai_service import identify_bag; f=open('../public/bags/reference-1.png', 'rb'); img=f.read(); f.close(); print(identify_bag(img, 'image/png'))  
+import os, sys; from dotenv import load_dotenv; load_dotenv(dotenv_path='../.env.local'); from services.ai_service import identify_bag; f=open('../public/bags/reference-1.png', 'rb'); img=f.read(); f.close(); print(identify_bag(img, 'image/png'))  

@@ -107,7 +107,7 @@ export async function identifyHandbag(
   const form = new FormData()
   form.append('image', imageFile)
   
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? '/_/backend' : 'http://127.0.0.1:8000')
   const res = await fetch(`${baseUrl}/api/v1/identify`, {
     method: 'POST',
     body: form,
@@ -145,7 +145,7 @@ export async function identifyHandbag(
 export async function submitIdentificationFeedback(
   payload: FeedbackPayload,
 ): Promise<{ ok: true }> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? '/_/backend' : 'http://127.0.0.1:8000')
   const res = await fetch(`${baseUrl}/api/v1/feedback`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -1,8 +1,10 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+import os
 from dotenv import load_dotenv
 
-load_dotenv()
+env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env.local')
+load_dotenv(dotenv_path=env_path)
 
 from models import BagIdentificationResult, FeedbackPayload
 from services.ai_service import identify_bag

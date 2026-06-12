@@ -8,56 +8,30 @@ import httpx
 
 from google import genai
 from google.genai import types
-from openai import OpenAI
+from duckduckgo_search import DDGS
 from models import BagIdentificationResult, ShoppingSource
 from services.db_service import upload_image
-
 
 def _clean_model_for_search(model: str) -> str:
     """Strip product codes (anything in parens/brackets) and truncate to 40 chars."""
     clean = re.sub(r'\s*[\(\[]\S+[\)\]]', '', model).strip()
     return clean[:40]
 
-
-def _generate_and_cache_image(prompt: str, fallback_url: str) -> str:
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        return fallback_url
-        
+def get_real_bag_images(brand: str, model: str, max_results: int = 4) -> list:
+    query = f"{brand} {model} handbag"
     try:
-        client = OpenAI(api_key=api_key)
-        response = client.images.generate(
-            model="dall-e-3",
-            prompt=prompt,
-            size="1024x1024",
-            quality="standard",
-            n=1,
-        )
-        image_url = response.data[0].url
-        
-        # Cache to Supabase to prevent URL expiration (OpenAI URLs expire in 2h)
-        try:
-            with httpx.Client(timeout=10.0) as http_client:
-                resp = http_client.get(image_url, follow_redirects=True)
-                resp.raise_for_status()
-                image_bytes = resp.content
-                content_type = resp.headers.get("Content-Type", "image/png")
-                filename = f"gen_{uuid.uuid4().hex[:8]}.png"
-                bucket_url = upload_image(image_bytes, filename, content_type)
-                if bucket_url:
-                    return bucket_url
-        except Exception as e:
-            print(f"Failed to cache generated image: {e}")
-            
-        return image_url
+        results = DDGS().images(query, max_results=max_results)
+        return [r.get("image") for r in results if r.get("image")]
     except Exception as e:
-        print(f"OpenAI Image generation failed: {e}")
-        return fallback_url
+        print(f"DDGS error: {e}")
+        return []
 
 
 def identify_bag(image_bytes: bytes, mime_type: str, uploaded_image_url: str = None) -> BagIdentificationResult:
     from dotenv import load_dotenv
-    load_dotenv(override=True)
+    import os
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env.local')
+    load_dotenv(dotenv_path=env_path, override=True)
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         print("Warning: GEMINI_API_KEY not set. Using mock response.")
@@ -148,21 +122,12 @@ def identify_bag(image_bytes: bytes, mime_type: str, uploaded_image_url: str = N
         for src in sources:
             src["imageUrl"] = fallback_source_url
 
-        def fetch_ref_image(ref):
-            caption = ref.get("caption", "handbag")
-            prompt_str = f"A high-quality, realistic, professional studio product photography shot of the luxury handbag: {brand} {model_short}. View: {caption}. Plain white background, luxurious lighting, hyperrealistic, no extra text or logos."
-            ref["url"] = _generate_and_cache_image(prompt_str, "/placeholder.svg")
-            return ref
-
-        # Generate the 4 reference images concurrently using DALL-E
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            futures = {executor.submit(fetch_ref_image, ref): i for i, ref in enumerate(ref_images)}
-            for future in as_completed(futures):
-                idx = futures[future]
-                try:
-                    ref_images[idx] = future.result()
-                except Exception as e:
-                    print(f"Image generation error ({idx}): {e}")
+        bag_image_urls = get_real_bag_images(brand, model_short, max_results=4)
+        for i, ref in enumerate(ref_images):
+            if i < len(bag_image_urls):
+                ref["url"] = bag_image_urls[i]
+            else:
+                ref["url"] = fallback_source_url
 
         data["referenceImages"] = ref_images
         data["alternativeMatches"] = alt_matches

@@ -218,7 +218,7 @@ export function ResultView() {
             {/* Alternatives */}
             <section>
               <h2 className="mb-3 font-serif text-xl font-semibold">
-                All the possible matches
+                Similar matches
               </h2>
               <div className="flex flex-col gap-3">
                 {result.alternativeMatches.map((m) => (
