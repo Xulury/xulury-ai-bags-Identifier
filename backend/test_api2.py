@@ -1,0 +1,1 @@
+import requests; f=open('../public/bags/reference-1.png', 'rb'); res=requests.post('http://127.0.0.1:8000/api/v1/identify', files={'image': ('ref.png', f, 'image/png')}); print(res.status_code); print(res.text)  
