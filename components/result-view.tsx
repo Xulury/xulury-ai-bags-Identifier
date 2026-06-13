@@ -18,6 +18,7 @@ import { ReferenceImageCarousel } from '@/components/reference-image-carousel'
 import { AlternativeMatchCard } from '@/components/alternative-match-card'
 import { CorrectionSheet } from '@/components/correction-sheet'
 import { ShoppingSourceTile } from '@/components/shopping-source-tile'
+import { MobileSourceDrawer } from '@/components/mobile-source-drawer'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -37,6 +38,7 @@ export function ResultView() {
   const [loaded, setLoaded] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [correctionOpen, setCorrectionOpen] = useState(false)
+  const [sourceDrawerOpen, setSourceDrawerOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -194,12 +196,14 @@ export function ResultView() {
             </div>
 
             {/* Reference images */}
-            <section>
-              <h2 className="mb-3 font-serif text-xl font-semibold">
-                Detailed view
-              </h2>
-              <ReferenceImageCarousel images={result.referenceImages} />
-            </section>
+            {result.referenceImages && result.referenceImages.length > 0 && (
+              <section>
+                <h2 className="mb-3 font-serif text-xl font-semibold">
+                  Detailed view
+                </h2>
+                <ReferenceImageCarousel images={result.referenceImages} />
+              </section>
+            )}
 
             {/* Shopping Sources */}
             {result.sources && result.sources.length > 0 && (
@@ -207,10 +211,24 @@ export function ResultView() {
                 <h2 className="mb-3 font-serif text-xl font-semibold">
                   Where to find it
                 </h2>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {/* Desktop: Grid */}
+                <div className="hidden md:grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {result.sources.map((source, idx) => (
                     <ShoppingSourceTile key={idx} source={source} />
                   ))}
+                </div>
+                {/* Mobile: Button */}
+                <div className="md:hidden">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between rounded-xl h-14 px-5 text-base border-border bg-card shadow-sm hover:border-accent hover:bg-accent/5"
+                    onClick={() => setSourceDrawerOpen(true)}
+                  >
+                    View Verified Sources
+                    <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-accent/20 px-1 text-xs font-semibold text-accent-foreground">
+                      {result.sources.length}
+                    </span>
+                  </Button>
                 </div>
               </section>
             )}
@@ -264,6 +282,17 @@ export function ResultView() {
         onSubmit={handleCorrection}
         submitting={submitting}
       />
+
+      {/* Mobile Shopping Sources */}
+      {result && (
+        <MobileSourceDrawer
+          open={sourceDrawerOpen}
+          onOpenChange={setSourceDrawerOpen}
+          sources={result.sources || []}
+          bagName={`${result.brand} ${result.model}`}
+          bagImage={result.uploadedImage}
+        />
+      )}
     </AppShell>
   )
 }

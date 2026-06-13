@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Trash2 } from 'lucide-react'
@@ -17,10 +17,56 @@ import {
 } from '@/components/ui/dialog'
 import { useScanHistory } from '@/hooks/use-scan-history'
 import { clearScanHistory } from '@/lib/scan-storage'
+import type { ScanHistoryItem } from '@/lib/types'
 
 export default function HistoryPage() {
-  const history = useScanHistory()
+  const localHistory = useScanHistory()
+  const [backendHistory, setBackendHistory] = useState<ScanHistoryItem[]>([])
   const [confirmOpen, setConfirmOpen] = useState(false)
+
+  useEffect(() => {
+    async function fetchBackendHistory() {
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? '/_/backend' : 'http://127.0.0.1:8000')
+        const res = await fetch(`${baseUrl}/api/v1/scans`)
+        if (res.ok) {
+          const data = await res.json()
+          const mapped: ScanHistoryItem[] = data.map((item: any) => ({
+            id: item.id,
+            brand: item.brand || 'Unknown',
+            model: item.model || 'Unknown',
+            category: item.category || 'Handbag',
+            priceLow: item.estimated_price_low || 0,
+            priceHigh: item.estimated_price_high || 0,
+            currency: item.currency || 'USD',
+            confidence: item.confidence || 0,
+            uploadedImage: item.uploaded_image_path 
+              ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/bag-scanned/${item.uploaded_image_path}` 
+              : '/placeholder.svg',
+            status: item.processing_status === 'completed' ? 'needs-review' : 'processing',
+            createdAt: item.created_at,
+          }))
+          setBackendHistory(mapped)
+        }
+      } catch (err) {
+        console.error('Failed to fetch backend history', err)
+      }
+    }
+    fetchBackendHistory()
+  }, [])
+
+  // Merge and deduplicate by ID
+  const combinedHistory = [...localHistory]
+  const localIds = new Set(localHistory.map(h => h.id))
+  for (const item of backendHistory) {
+    if (!localIds.has(item.id)) {
+      combinedHistory.push(item)
+    }
+  }
+  
+  // Sort by created_at descending
+  const history = combinedHistory.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
 
   return (
     <AppShell>

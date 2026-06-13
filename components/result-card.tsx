@@ -35,6 +35,12 @@ export function ResultCard({ result }: ResultCardProps) {
             <BadgeCheck className="size-3.5" aria-hidden="true" />
             Best Match
           </Badge>
+
+          {/* Mobile Confidence Badge Overlay */}
+          <div className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full border border-border/40 bg-background/90 p-1 pr-2.5 shadow-sm backdrop-blur-md sm:hidden">
+            <ConfidenceIndicator value={result.confidence} size={24} className="[&>span]:hidden" />
+            <span className="text-xs font-semibold leading-none">{result.confidence}% Match</span>
+          </div>
         </div>
 
         {/* Details */}
@@ -52,7 +58,7 @@ export function ResultCard({ result }: ResultCardProps) {
                 {result.category}
               </Badge>
             </div>
-            <div className="text-center">
+            <div className="hidden text-center sm:block">
               <ConfidenceIndicator value={result.confidence} />
               <p className="mt-1 text-[11px] text-muted-foreground">
                 match

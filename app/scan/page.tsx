@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card'
 import { identifyHandbag } from '@/lib/identify-service'
 import { addScanToHistory, setLastResult } from '@/lib/scan-storage'
 import type { BagIdentificationResult } from '@/lib/types'
+import { toast } from 'sonner'
 
 const TIPS = [
   { icon: Sun, text: 'Use natural lighting' },
@@ -49,13 +50,15 @@ export default function ScanPage() {
     setPhase('analysing')
     setAnalysisDone(false)
     try {
-      // Kick off the (mock) identification request immediately. The overlay
+      // Kick off the identification request immediately. The overlay
       // animation runs in parallel; we route once BOTH finish.
       const res = await identifyHandbag(file)
       setResult(res)
-    } catch (err) {
-      console.log('[v0] identify error:', err)
+    } catch (err: any) {
+      console.error('[v0] identify error:', err)
+      toast.error(err.message || 'Failed to identify handbag. Please try again.')
       setPhase('idle')
+      setAnalysisDone(false)
     }
   }
 
