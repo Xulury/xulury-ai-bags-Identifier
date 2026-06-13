@@ -135,7 +135,7 @@ export function ResultView() {
         </button>
       </div>
 
-      <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-10">
+      <div className="mx-auto w-full max-w-2xl px-4 py-3 sm:px-6 sm:py-10">
         {/* Desktop back link */}
         <Button
           variant="ghost"

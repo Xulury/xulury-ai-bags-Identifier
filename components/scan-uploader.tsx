@@ -78,7 +78,7 @@ export function ScanUploader({
         onDrop={handleDrop}
         aria-label="Upload a handbag photo"
         className={cn(
-          'flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed bg-card px-6 py-12 text-center transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          'flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed bg-card px-4 py-8 text-center transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
           dragging
             ? 'border-[var(--gold)] bg-[var(--gold)]/5'
             : 'border-border hover:border-[var(--gold)]/60',

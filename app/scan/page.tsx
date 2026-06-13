@@ -82,8 +82,8 @@ export default function ScanPage() {
       )}
 
       <AppShell hideFooter>
-        <div className="mx-auto w-full max-w-xl px-4 py-8 sm:px-6 sm:py-12">
-          <header className="mb-6 text-center sm:text-left">
+        <div className="mx-auto w-full max-w-xl px-4 py-4 sm:px-6 sm:py-10">
+          <header className="mb-4 text-center sm:text-left">
             <h1 className="text-balance font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
               Scan your handbag
             </h1>
@@ -100,7 +100,7 @@ export default function ScanPage() {
           />
 
           {/* Tips */}
-          <Card className="mt-6 border-border/70 bg-card/60 p-5">
+          <Card className="mt-4 border-border/70 bg-card/60 p-4">
             <h2 className="mb-3 text-sm font-semibold">For the best results</h2>
             <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {TIPS.map((tip) => {
@@ -123,7 +123,7 @@ export default function ScanPage() {
 
           <Button
             size="lg"
-            className="mt-6 h-12 w-full rounded-full text-base"
+            className="mt-4 h-12 w-full rounded-full text-base"
             disabled={!file || phase === 'analysing'}
             onClick={handleIdentify}
           >

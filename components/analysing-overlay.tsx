@@ -60,11 +60,11 @@ export function AnalysingOverlay({ onComplete }: AnalysingOverlayProps) {
       aria-live="polite"
     >
       {/* Page content — centered column */}
-      <div className="flex flex-1 flex-col items-center px-6 pt-12">
-        <h1 className="mb-1 font-serif text-[1.85rem] font-semibold tracking-tight text-foreground">
+      <div className="flex flex-1 flex-col items-center px-6 pt-6">
+        <h1 className="mb-1 font-serif text-[1.6rem] font-semibold tracking-tight text-foreground">
           Analyzing your bag
         </h1>
-        <p className="mb-10 text-center text-sm leading-relaxed text-muted-foreground">
+        <p className="mb-6 text-center text-[13px] leading-relaxed text-muted-foreground">
           Our AI is checking visual details and matching trusted product
           references.
         </p>
@@ -131,12 +131,12 @@ export function AnalysingOverlay({ onComplete }: AnalysingOverlayProps) {
         </div>
 
         {/* Status text */}
-        <p className="mt-5 font-semibold text-foreground">
+        <p className="mt-4 font-semibold text-foreground">
           {STATUS_TEXTS[statusIndex]}
         </p>
 
         {/* Thin progress bar */}
-        <div className="mt-4 h-1 w-full max-w-xs overflow-hidden rounded-full bg-border">
+        <div className="mt-3 h-1 w-full max-w-xs overflow-hidden rounded-full bg-border">
           <div
             className="h-full rounded-full bg-[var(--gold)] transition-all duration-150"
             style={{ width: `${progress}%` }}
@@ -144,11 +144,11 @@ export function AnalysingOverlay({ onComplete }: AnalysingOverlayProps) {
         </div>
 
         {/* Stage checklist */}
-        <div className="mt-6 w-full max-w-xs divide-y divide-border">
+        <div className="mt-4 w-full max-w-xs divide-y divide-border">
           {STAGES.map((stage, i) => {
             const status = getStageStatus(progress, i)
             return (
-              <div key={stage.key} className="flex items-center justify-between py-3">
+              <div key={stage.key} className="flex items-center justify-between py-2.5">
                 <span className="text-sm font-medium text-foreground">
                   {stage.label}
                 </span>

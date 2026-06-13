@@ -10,7 +10,7 @@ interface ResultCardProps {
 
 export function ResultCard({ result }: ResultCardProps) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       {/* Bag image — full width warm card */}
       <div className="relative w-full overflow-hidden rounded-2xl bg-secondary/60">
         <div className="relative aspect-[4/3] w-full">

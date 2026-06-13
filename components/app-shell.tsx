@@ -16,7 +16,7 @@ export function AppShell({ children, hideFooter, className }: AppShellProps) {
     <div className="flex min-h-screen flex-col">
       <AppHeader />
       {/* pb accounts for the mobile bottom nav height + safe area */}
-      <main className={cn('flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0', className)}>{children}</main>
+      <main className={cn('flex-1 pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0', className)}>{children}</main>
       {!hideFooter && <AppFooter />}
       <MobileBottomNav />
     </div>
