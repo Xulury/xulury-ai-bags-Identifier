@@ -68,12 +68,12 @@ def upload_image(scan_id: str, image_bytes: bytes, filename: str, content_type: 
 def generate_image_hash(image_bytes: bytes) -> str:
     return hashlib.sha256(image_bytes).hexdigest()
 
-def insert_initial_scan(scan_id: str, filename: str, content_type: str, file_size: int, image_hash: str) -> bool:
+def insert_initial_scan(scan_id: str, filename: str, content_type: str, file_size: int, image_hash: str) -> tuple[bool, str]:
     if not supabase:
         if ALLOW_IN_MEMORY_FALLBACK:
             _mock_scans_db[scan_id] = {"id": scan_id, "processing_status": "processing"}
-            return True
-        return False
+            return True, ""
+        return False, "Supabase client not initialized"
         
     try:
         extension = _get_extension(content_type, filename)
@@ -89,10 +89,10 @@ def insert_initial_scan(scan_id: str, filename: str, content_type: str, file_siz
             "processing_status": "processing"
         }
         supabase.table("scans").insert(data).execute()
-        return True
+        return True, ""
     except Exception as e:
         print(f"Error inserting initial scan: {e}")
-        return False
+        return False, str(e)
 
 def update_scan_result(scan_id: str, result_data: dict, status: str = "completed", error: str = None) -> bool:
     if not supabase:
