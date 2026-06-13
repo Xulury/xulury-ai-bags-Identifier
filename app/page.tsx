@@ -33,10 +33,106 @@ const FEATURES = [
   },
 ]
 
+const MOBILE_STEPS = [
+  { step: 1, label: 'Upload\nor capture' },
+  { step: 2, label: 'AI scans\ndetails' },
+  { step: 3, label: 'Review\nsources' },
+]
+
 export default function HomePage() {
   return (
     <AppShell>
-      <div className="w-full">
+      {/* ─── Mobile: iOS-style home ─── */}
+      <div className="flex flex-col md:hidden" style={{ padding: '4vw' }}>
+        {/* Headline — scales with viewport width */}
+        <h1
+          className="font-serif font-semibold leading-tight tracking-tight text-foreground"
+          style={{ fontSize: 'clamp(1.4rem, 6vw, 1.75rem)' }}
+        >
+          Identify your luxury bag from a single image.
+        </h1>
+        <p
+          className="mt-2 leading-relaxed text-muted-foreground"
+          style={{ fontSize: 'clamp(0.75rem, 3.5vw, 0.9rem)' }}
+        >
+          Scan the bag to find its brand, model, variant, estimated value and
+          verified buying sources.
+        </p>
+
+        {/* Upload zone — width-relative padding so it scales on any phone */}
+        <Link href="/scan" className="mt-4 block w-full" aria-label="Upload bag image">
+          <div
+            className="flex w-full flex-col items-center justify-center rounded-2xl bg-secondary/60"
+            style={{ padding: '8vw 4vw' }}
+          >
+            <svg
+              viewBox="0 0 88 88"
+              fill="none"
+              aria-hidden="true"
+              className="text-foreground/70"
+              style={{ width: 'clamp(56px, 18vw, 88px)', height: 'clamp(56px, 18vw, 88px)', marginBottom: '4vw' }}
+            >
+              <path
+                d="M30 34V26C30 19.373 35.373 14 42 14H46C52.627 14 58 19.373 58 26V34"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <rect x="10" y="34" width="68" height="46" rx="8" stroke="currentColor" strokeWidth="2" />
+              <circle cx="44" cy="57" r="6" stroke="currentColor" strokeWidth="2" />
+            </svg>
+
+            <span
+              className="rounded-full bg-foreground font-bold uppercase tracking-widest text-background"
+              style={{
+                fontSize: 'clamp(0.6rem, 2.8vw, 0.75rem)',
+                padding: 'clamp(8px, 2.5vw, 12px) clamp(20px, 6vw, 28px)',
+              }}
+            >
+              Upload Bag Image
+            </span>
+          </div>
+        </Link>
+
+        {/* How it works */}
+        <div className="mt-4">
+          <p
+            className="font-semibold uppercase text-[var(--gold)]"
+            style={{ fontSize: 'clamp(0.55rem, 2.5vw, 0.7rem)', letterSpacing: '0.14em', marginBottom: '2vw' }}
+          >
+            How It Works
+          </p>
+          <div className="grid w-full grid-cols-3" style={{ gap: '2vw' }}>
+            {MOBILE_STEPS.map(({ step, label }) => (
+              <div
+                key={step}
+                className="flex flex-col rounded-xl border border-border bg-card"
+                style={{ gap: '1.5vw', padding: '2.5vw' }}
+              >
+                <span
+                  className="flex items-center justify-center rounded-full border border-border font-semibold text-foreground"
+                  style={{
+                    width: 'clamp(18px, 5vw, 24px)',
+                    height: 'clamp(18px, 5vw, 24px)',
+                    fontSize: 'clamp(0.55rem, 2.5vw, 0.7rem)',
+                  }}
+                >
+                  {step}
+                </span>
+                <p
+                  className="whitespace-pre-line leading-snug text-foreground"
+                  style={{ fontSize: 'clamp(0.6rem, 2.8vw, 0.75rem)' }}
+                >
+                  {label}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Desktop: marketing layout ─── */}
+      <div className="hidden w-full md:block">
         <HomeHero />
 
         {/* How it works */}
