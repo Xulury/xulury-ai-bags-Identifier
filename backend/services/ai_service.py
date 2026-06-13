@@ -4,30 +4,39 @@ import json
 import uuid
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import httpx
 
 from google import genai
 from google.genai import types
-from duckduckgo_search import DDGS
 from models import BagIdentificationResult, ShoppingSource
-from services.db_service import upload_image
+from services.db_service import get_client
 
 def _clean_model_for_search(model: str) -> str:
     """Strip product codes (anything in parens/brackets) and truncate to 40 chars."""
     clean = re.sub(r'\s*[\(\[]\S+[\)\]]', '', model).strip()
     return clean[:40]
 
-def get_real_bag_images(brand: str, model: str, max_results: int = 4) -> list:
-    query = f"{brand} {model} handbag"
+def get_db_product_images(brand: str, model: str) -> list:
+    """Fetch product images from DB matching brand and model."""
+    supabase = get_client()
+    if not supabase:
+        return []
+        
     try:
-        results = DDGS().images(query, max_results=max_results)
-        return [r.get("image") for r in results if r.get("image")]
+        # Basic matching: we assume we might have a product record
+        # For a robust implementation, full text search or trigram matching is better
+        res = supabase.table("products").select("id").ilike("canonical_brand", f"%{brand}%").ilike("canonical_model", f"%{model}%").execute()
+        if not res.data:
+            return []
+            
+        product_id = res.data[0]["id"]
+        img_res = supabase.table("product_images").select("*").eq("product_id", product_id).eq("is_active", True).order("sort_order").execute()
+        
+        return img_res.data or []
     except Exception as e:
-        print(f"DDGS error: {e}")
+        print(f"Error fetching product images from DB: {e}")
         return []
 
-
-def identify_bag(image_bytes: bytes, mime_type: str, uploaded_image_url: str = None) -> BagIdentificationResult:
+def identify_bag(scan_id: str, image_bytes: bytes, mime_type: str, uploaded_image_url: str = None) -> BagIdentificationResult:
     from dotenv import load_dotenv
     import os
     env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env.local')
@@ -35,7 +44,7 @@ def identify_bag(image_bytes: bytes, mime_type: str, uploaded_image_url: str = N
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         print("Warning: GEMINI_API_KEY not set. Using mock response.")
-        return _mock_response()
+        return _mock_response(scan_id)
     
     client = genai.Client(api_key=api_key)
 
@@ -96,53 +105,116 @@ def identify_bag(image_bytes: bytes, mime_type: str, uploaded_image_url: str = N
             ),
         )
 
-        data = json.loads(response.text)
+        text = response.text.strip()
+        if text.startswith("```json"):
+            text = text[7:]
+        elif text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+        
+        try:
+            raw_data = json.loads(text.strip())
+        except Exception:
+            raw_data = {}
 
-        data['id'] = f"scan_{int(datetime.utcnow().timestamp())}_{str(uuid.uuid4())[:6]}"
+        data = {}
+        data['id'] = scan_id
         data['createdAt'] = datetime.utcnow().isoformat() + "Z"
 
-        brand = data.get("brand", "")
-        model_name = data.get("model", "")
-        model_short = _clean_model_for_search(model_name)
+        data['brand'] = raw_data.get("brand") or "Unknown Brand"
+        data['model'] = raw_data.get("model") or "Unknown Model"
+        data['category'] = raw_data.get("category") or "Handbag"
+        data['currency'] = raw_data.get("currency") or "USD"
 
-        ref_images = data.get("referenceImages", [])
-        alt_matches = data.get("alternativeMatches", [])
-        sources = data.get("sources", [])
+        for key in ["priceLow", "priceHigh", "confidence"]:
+            val = raw_data.get(key)
+            if isinstance(val, str):
+                data[key] = int(re.sub(r'[^\d]', '', val) or 0)
+            elif val is None:
+                data[key] = 0
+            else:
+                try:
+                    data[key] = int(val)
+                except:
+                    data[key] = 0
 
-        # Ensure exactly 4 reference images as requested by the user
-        if len(ref_images) > 4:
-            ref_images = ref_images[:4]
-
-        # Use the uploaded image for alternative matches and sources
         fallback_source_url = uploaded_image_url if uploaded_image_url else "/placeholder.svg"
 
-        for alt in alt_matches:
-            alt["imageUrl"] = fallback_source_url
-
-        for src in sources:
-            src["imageUrl"] = fallback_source_url
-
-        bag_image_urls = get_real_bag_images(brand, model_short, max_results=4)
-        for i, ref in enumerate(ref_images):
-            if i < len(bag_image_urls):
-                ref["url"] = bag_image_urls[i]
+        alt_matches = raw_data.get("alternativeMatches", [])
+        if not isinstance(alt_matches, list):
+            alt_matches = []
+        valid_alts = []
+        for i, alt in enumerate(alt_matches):
+            if not isinstance(alt, dict): continue
+            conf = alt.get("confidence")
+            if isinstance(conf, str):
+                conf = int(re.sub(r'[^\d]', '', conf) or 0)
+            elif conf is None:
+                conf = 80
             else:
-                ref["url"] = fallback_source_url
+                try: conf = int(conf)
+                except: conf = 80
+            
+            valid_alts.append({
+                "id": alt.get("id") or f"a{i}",
+                "brand": alt.get("brand") or "Unknown",
+                "model": alt.get("model") or "Unknown",
+                "confidence": conf,
+                "imageUrl": fallback_source_url
+            })
+
+        sources = raw_data.get("sources", [])
+        if not isinstance(sources, list):
+            sources = []
+        valid_sources = []
+        for src in sources:
+            if not isinstance(src, dict): continue
+            valid_sources.append({
+                "sourceName": src.get("sourceName") or "Web",
+                "brand": src.get("brand") or data["brand"],
+                "bagName": src.get("bagName") or data["model"],
+                "price": str(src.get("price") or ""),
+                "rating": src.get("rating") if isinstance(src.get("rating"), (int, float)) else None,
+                "url": src.get("url") or "#",
+                "imageUrl": fallback_source_url
+            })
+
+        model_short = _clean_model_for_search(data["model"])
+        db_images = get_db_product_images(data["brand"], model_short)
+        ref_images = []
+        for i, img in enumerate(db_images):
+            if img.get("image_url"):
+                ref_images.append({
+                    "id": str(img.get("id")),
+                    "url": img.get("image_url"),
+                    "caption": img.get("label") or img.get("view_type") or "Detail"
+                })
+
+        if not ref_images and uploaded_image_url:
+            ref_images.append({
+                "id": "fallback-scan",
+                "url": uploaded_image_url,
+                "caption": "Scanned Image"
+            })
 
         data["referenceImages"] = ref_images
-        data["alternativeMatches"] = alt_matches
-        data["sources"] = sources
+        data["alternativeMatches"] = valid_alts
+        data["sources"] = valid_sources
+        data["uploadedImage"] = uploaded_image_url
 
         return BagIdentificationResult(**data)
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"Error calling Gemini API: {e}")
-        return _mock_response()
+        return _mock_response(scan_id)
 
 
-def _mock_response() -> BagIdentificationResult:
+def _mock_response(scan_id: str) -> BagIdentificationResult:
     return BagIdentificationResult(
-        id=f"scan_{int(datetime.utcnow().timestamp())}_mock",
+        id=scan_id,
         brand="Hermès",
         model="Birkin 30",
         category="Tote Bag",
@@ -150,21 +222,16 @@ def _mock_response() -> BagIdentificationResult:
         priceHigh=25000,
         currency="USD",
         confidence=98,
-        referenceImages=[
-            {"id": "r1", "url": "/bags/reference-1.png", "caption": "Front view"},
-            {"id": "r2", "url": "/bags/reference-2.png", "caption": "Side view"},
-            {"id": "r3", "url": "/bags/reference-3.png", "caption": "Back view"},
-            {"id": "r4", "url": "/bags/reference-4.png", "caption": "Close up"},
-        ],
+        referenceImages=[],
         alternativeMatches=[
-            {"id": "a1", "brand": "Hermès", "model": "Kelly 28", "confidence": 75, "imageUrl": "/bags/alt-1.png"}
+            {"id": "a1", "brand": "Hermès", "model": "Kelly 28", "confidence": 75, "imageUrl": "/placeholder.svg"}
         ],
         sources=[
             ShoppingSource(
                 sourceName="Official Site",
                 brand="Hermès",
                 bagName="Birkin 30 Bag in Togo Leather",
-                imageUrl="/bags/reference-1.png",
+                imageUrl="/placeholder.svg",
                 price="$11,400+",
                 rating=None,
                 url="https://www.hermes.com/us/en/category/women/bags-and-small-leather-goods/bags-and-clutches/"
@@ -173,7 +240,7 @@ def _mock_response() -> BagIdentificationResult:
                 sourceName="eBay",
                 brand="Hermès",
                 bagName="Hermès Birkin 30 Togo Gold – Authentic",
-                imageUrl="/bags/reference-2.png",
+                imageUrl="/placeholder.svg",
                 price="$15,000 – $22,000",
                 rating=4.9,
                 url="https://www.ebay.com/sch/i.html?_nkw=hermes+birkin+30+togo&_sacat=169291"

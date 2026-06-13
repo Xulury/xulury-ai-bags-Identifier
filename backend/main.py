@@ -1,49 +1,99 @@
+import os
+import uuid
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-import os
 from dotenv import load_dotenv
 
 env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env.local')
 load_dotenv(dotenv_path=env_path)
 
+backend_env = os.path.join(os.path.dirname(__file__), '.env')
+load_dotenv(dotenv_path=backend_env, override=True)
+
 from models import BagIdentificationResult, FeedbackPayload
 from services.ai_service import identify_bag
-from services.db_service import save_scan, save_feedback, upload_image
+from services.db_service import (
+    upload_image, generate_image_hash, insert_initial_scan, update_scan_result,
+    save_scan_candidates, save_scan_snapshots, save_feedback, get_scan_by_id,
+    get_recent_scans, get_client
+)
+
+MAX_UPLOAD_SIZE = int(os.environ.get("MAX_UPLOAD_SIZE_MB", 10)) * 1024 * 1024
+CORS_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "*").split(",")
 
 app = FastAPI(title="LuxeLens API", version="1.0.0")
 
-# Add CORS middleware to allow Next.js frontend to communicate if not using rewrites
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+@app.get("/health")
+async def health_check():
+    supabase = get_client()
+    status = {"status": "ok", "supabase_configured": supabase is not None}
+    if supabase:
+        try:
+            res = supabase.table("scans").select("id").limit(1).execute()
+            status["database_connection"] = "ok"
+        except Exception as e:
+            status["database_connection"] = f"error: {str(e)}"
+    return status
+
 @app.post("/api/v1/identify", response_model=BagIdentificationResult)
 async def identify_endpoint(image: UploadFile = File(...)):
-    if not image.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File provided is not an image.")
+    if not image.content_type.startswith("image/") or image.content_type not in ["image/jpeg", "image/png", "image/webp", "image/jpg"]:
+        raise HTTPException(status_code=400, detail="File provided is not a supported image.")
     
     try:
         contents = await image.read()
+        file_size = len(contents)
         
-        # Upload image to Supabase Storage
-        image_url = upload_image(contents, image.filename or "uploaded_image", image.content_type)
+        if file_size > MAX_UPLOAD_SIZE:
+            raise HTTPException(status_code=400, detail="Image exceeds maximum allowed size.")
+        
+        scan_id = str(uuid.uuid4())
+        image_hash = generate_image_hash(contents)
+        
+        # 1. Insert Initial Scan
+        if not insert_initial_scan(scan_id, image.filename or "uploaded_image", image.content_type, file_size, image_hash):
+            raise HTTPException(status_code=500, detail="Could not initialize scan in database.")
+            
+        # 2. Upload Image
+        image_url = upload_image(scan_id, contents, image.filename or "uploaded_image", image.content_type)
+        if not image_url:
+            update_scan_result(scan_id, {}, status="failed", error="Image upload failed")
+            raise HTTPException(status_code=500, detail="Image upload failed.")
 
-        # Call AI Service
-        result = identify_bag(contents, image.content_type, image_url)
+        # 3. Process AI
+        result = identify_bag(scan_id, contents, image.content_type, image_url)
         
-        # Set the uploadedImage URL to the Supabase URL if successful
-        if image_url:
-            result.uploadedImage = image_url
+        # 4. Save Candidates and Snapshots
+        alt_matches = [m.model_dump() for m in result.alternativeMatches]
+        sources = [s.model_dump() for s in result.sources]
+        save_scan_candidates(scan_id, alt_matches)
+        save_scan_snapshots(scan_id, sources)
         
-        # Save to DB
-        save_scan(result.model_dump())
+        # 5. Update Scan Result
+        update_data = {
+            "brand": result.brand,
+            "model": result.model,
+            "category": result.category,
+            "estimated_price_low": result.priceLow,
+            "estimated_price_high": result.priceHigh,
+            "confidence": result.confidence,
+            "currency": result.currency,
+            "result_json": result.model_dump(mode='json')
+        }
+        update_scan_result(scan_id, update_data, status="completed")
         
         return result
         
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -58,6 +108,40 @@ async def feedback_endpoint(payload: FeedbackPayload):
     except Exception as e:
         print(f"Error in feedback_endpoint: {e}")
         raise HTTPException(status_code=500, detail="Internal server error saving feedback.")
+
+@app.get("/api/v1/scans")
+async def get_scans_history(limit: int = 20):
+    return get_recent_scans(limit)
+
+@app.get("/api/v1/scans/{scan_id}")
+async def get_single_scan(scan_id: str):
+    scan = get_scan_by_id(scan_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found.")
+    
+    return scan.get("result_json") or scan
+
+@app.get("/api/v1/products/{product_id}/images")
+async def get_product_images(product_id: str):
+    supabase = get_client()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+    try:
+        res = supabase.table("product_images").select("*").eq("product_id", product_id).eq("is_active", True).order("sort_order").execute()
+        return res.data or []
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/scans/{scan_id}/sources")
+async def get_scan_sources(scan_id: str):
+    supabase = get_client()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+    try:
+        res = supabase.table("scan_listing_snapshots").select("*").eq("scan_id", scan_id).execute()
+        return res.data or []
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
