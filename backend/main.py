@@ -57,39 +57,42 @@ async def identify_endpoint(image: UploadFile = File(...)):
         
         scan_id = str(uuid.uuid4())
         image_hash = generate_image_hash(contents)
-        
-        # 1. Insert Initial Scan
-        if not insert_initial_scan(scan_id, image.filename or "uploaded_image", image.content_type, file_size, image_hash):
-            raise HTTPException(status_code=500, detail="Could not initialize scan in database.")
-            
-        # 2. Upload Image
-        image_url = upload_image(scan_id, contents, image.filename or "uploaded_image", image.content_type)
-        if not image_url:
-            update_scan_result(scan_id, {}, status="failed", error="Image upload failed")
-            raise HTTPException(status_code=500, detail="Image upload failed.")
+        db_available = True
 
-        # 3. Process AI
+        # 1. Insert Initial Scan (non-fatal — AI identification continues even if DB is down)
+        success, error_msg = insert_initial_scan(scan_id, image.filename or "uploaded_image", image.content_type, file_size, image_hash)
+        if not success:
+            db_available = False
+            print(f"Warning: Could not initialize scan in database: {error_msg}. Continuing without persistence.")
+
+        # 2. Upload Image (non-fatal)
+        image_url = None
+        if db_available:
+            image_url = upload_image(scan_id, contents, image.filename or "uploaded_image", image.content_type)
+            if not image_url:
+                print(f"Warning: Image upload to storage failed. Continuing without image URL.")
+
+        # 3. Process AI (always runs — this is the core feature)
         result = identify_bag(scan_id, contents, image.content_type, image_url)
-        
-        # 4. Save Candidates and Snapshots
-        alt_matches = [m.model_dump() for m in result.alternativeMatches]
-        sources = [s.model_dump() for s in result.sources]
-        save_scan_candidates(scan_id, alt_matches)
-        save_scan_snapshots(scan_id, sources)
-        
-        # 5. Update Scan Result
-        update_data = {
-            "brand": result.brand,
-            "model": result.model,
-            "category": result.category,
-            "estimated_price_low": result.priceLow,
-            "estimated_price_high": result.priceHigh,
-            "confidence": result.confidence,
-            "currency": result.currency,
-            "result_json": result.model_dump(mode='json')
-        }
-        update_scan_result(scan_id, update_data, status="completed")
-        
+
+        # 4. Save Candidates, Snapshots and Result (non-fatal)
+        if db_available:
+            alt_matches = [m.model_dump() for m in result.alternativeMatches]
+            sources = [s.model_dump() for s in result.sources]
+            save_scan_candidates(scan_id, alt_matches)
+            save_scan_snapshots(scan_id, sources)
+            update_data = {
+                "brand": result.brand,
+                "model": result.model,
+                "category": result.category,
+                "estimated_price_low": result.priceLow,
+                "estimated_price_high": result.priceHigh,
+                "confidence": result.confidence,
+                "currency": result.currency,
+                "result_json": result.model_dump(mode='json')
+            }
+            update_scan_result(scan_id, update_data, status="completed")
+
         return result
         
     except HTTPException:
