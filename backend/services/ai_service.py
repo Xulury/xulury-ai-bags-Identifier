@@ -50,8 +50,17 @@ def identify_bag(scan_id: str, image_bytes: bytes, mime_type: str, uploaded_imag
 
     prompt = """
     You are an expert luxury handbag identifier and appraiser.
-    Analyze this image and identify the handbag.
-    Return a JSON object that EXACTLY matches the following structure.
+
+    STEP 1 — Is this a handbag?
+    First, check whether the image contains a handbag, purse, clutch, or luxury bag.
+    If the image does NOT show any kind of bag, return ONLY this JSON (nothing else):
+    {
+      "is_bag": false,
+      "not_bag_reason": "One short sentence describing what the image actually shows."
+    }
+
+    STEP 2 — If it IS a handbag, analyze and identify it.
+    Return a JSON object with "is_bag": true plus ALL fields below.
     If you are unsure of exact details, provide your best educated estimate.
 
     For 'model': use the SHORT common name only (e.g. "Neverfull MM", "Lady Dior Medium"). Do NOT include product codes.
@@ -63,6 +72,7 @@ def identify_bag(scan_id: str, image_bytes: bytes, mime_type: str, uploaded_imag
 
     Structure:
     {
+      "is_bag": true,
       "brand": "Brand Name",
       "model": "Short Model Name",
       "category": "Category (e.g., Tote Bag, Crossbody, Shoulder Bag)",
@@ -117,6 +127,12 @@ def identify_bag(scan_id: str, image_bytes: bytes, mime_type: str, uploaded_imag
             raw_data = json.loads(text.strip())
         except Exception:
             raw_data = {}
+
+        # Reject non-bag images before doing any further processing
+        if raw_data.get("is_bag") is False:
+            from fastapi import HTTPException
+            reason = raw_data.get("not_bag_reason") or "This doesn't appear to be a handbag."
+            raise HTTPException(status_code=400, detail=reason)
 
         data = {}
         data['id'] = scan_id

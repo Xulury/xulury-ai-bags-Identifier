@@ -115,6 +115,11 @@ export async function identifyHandbag(
 
   if (!res.ok) {
     const text = await res.text()
+    if (res.status === 400) {
+      let detail = 'This image does not appear to contain a handbag.'
+      try { detail = JSON.parse(text).detail || detail } catch {}
+      throw new Error(`NOT_A_BAG:${detail}`)
+    }
     throw new Error(`Failed to identify handbag: ${res.statusText} ${text}`)
   }
 

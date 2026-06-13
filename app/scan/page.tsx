@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sun, Maximize, CloudOff, Sparkles, Loader2 } from 'lucide-react'
+import { Sun, Maximize, CloudOff, Sparkles, Loader2, AlertTriangle } from 'lucide-react'
 import { AppShell } from '@/components/app-shell'
 import { ScanUploader } from '@/components/scan-uploader'
 import { AnalysingOverlay } from '@/components/analysing-overlay'
@@ -29,6 +29,7 @@ export default function ScanPage() {
   const [phase, setPhase] = useState<Phase>('idle')
   const [result, setResult] = useState<BagIdentificationResult | null>(null)
   const [analysisDone, setAnalysisDone] = useState(false)
+  const [notBagWarning, setNotBagWarning] = useState<string | null>(null)
 
   // Manage object URL lifecycle for the preview.
   useEffect(() => {
@@ -43,20 +44,24 @@ export default function ScanPage() {
 
   function handleClear() {
     setFile(null)
+    setNotBagWarning(null)
   }
 
   async function handleIdentify() {
     if (!file) return
+    setNotBagWarning(null)
     setPhase('analysing')
     setAnalysisDone(false)
     try {
-      // Kick off the identification request immediately. The overlay
-      // animation runs in parallel; we route once BOTH finish.
       const res = await identifyHandbag(file)
       setResult(res)
     } catch (err: any) {
       console.error('[v0] identify error:', err)
-      toast.error(err.message || 'Failed to identify handbag. Please try again.')
+      if (typeof err.message === 'string' && err.message.startsWith('NOT_A_BAG:')) {
+        setNotBagWarning(err.message.slice(10))
+      } else {
+        toast.error(err.message || 'Failed to identify handbag. Please try again.')
+      }
       setPhase('idle')
       setAnalysisDone(false)
     }
@@ -95,9 +100,22 @@ export default function ScanPage() {
           <ScanUploader
             file={file}
             previewUrl={previewUrl}
-            onSelect={setFile}
+            onSelect={(f) => { setNotBagWarning(null); setFile(f) }}
             onClear={handleClear}
           />
+
+          {/* Not-a-bag warning */}
+          {notBagWarning && (
+            <div className="mt-3 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800/40 dark:bg-amber-900/20">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden="true" />
+              <div>
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">No handbag detected</p>
+                <p className="mt-0.5 text-sm text-amber-700 dark:text-amber-300">
+                  {notBagWarning} Please upload a clear photo of a luxury handbag.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Tips */}
           <Card className="mt-4 border-border/70 bg-card/60 p-4">
