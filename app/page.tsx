@@ -33,78 +33,10 @@ const FEATURES = [
   },
 ]
 
-const MOBILE_STEPS = [
-  { step: 1, label: 'Upload\nor capture' },
-  { step: 2, label: 'AI scans\ndetails' },
-  { step: 3, label: 'Review\nsources' },
-]
-
 export default function HomePage() {
   return (
     <AppShell>
-      {/* ─── Mobile: iOS-style home ─── */}
-      <div className="flex flex-col px-4 pt-4 pb-2 md:hidden">
-        <h1 className="font-serif text-[1.6rem] font-semibold leading-tight tracking-tight text-foreground">
-          Identify your luxury bag from a single image.
-        </h1>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-          Scan the bag to find its brand, model, variant, estimated value and
-          verified buying sources.
-        </p>
-
-        {/* Upload zone */}
-        <Link href="/scan" className="mt-4 block" aria-label="Upload bag image">
-          <div className="flex flex-col items-center justify-center rounded-2xl bg-secondary/60 px-4 py-8">
-            {/* Bag illustration */}
-            <svg
-              width="76"
-              height="76"
-              viewBox="0 0 88 88"
-              fill="none"
-              aria-hidden="true"
-              className="mb-4 text-foreground/70"
-            >
-              <path
-                d="M30 34V26C30 19.373 35.373 14 42 14H46C52.627 14 58 19.373 58 26V34"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <rect x="10" y="34" width="68" height="46" rx="8" stroke="currentColor" strokeWidth="2" />
-              <circle cx="44" cy="57" r="6" stroke="currentColor" strokeWidth="2" />
-            </svg>
-
-            <span className="rounded-full bg-foreground px-6 py-2.5 text-[11px] font-bold uppercase tracking-widest text-background">
-              Upload Bag Image
-            </span>
-          </div>
-        </Link>
-
-        {/* How it works */}
-        <div className="mt-4">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--gold)]">
-            How It Works
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            {MOBILE_STEPS.map(({ step, label }) => (
-              <div
-                key={step}
-                className="flex flex-col gap-1.5 rounded-xl border border-border bg-card p-2.5"
-              >
-                <span className="flex size-5 items-center justify-center rounded-full border border-border text-[10px] font-semibold text-foreground">
-                  {step}
-                </span>
-                <p className="whitespace-pre-line text-[11px] leading-snug text-foreground">
-                  {label}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ─── Desktop: marketing layout ─── */}
-      <div className="hidden md:block">
+      <div className="w-full">
         <HomeHero />
 
         {/* How it works */}
