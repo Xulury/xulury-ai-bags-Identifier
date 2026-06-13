@@ -78,7 +78,7 @@ export function ResultView() {
   async function handleShare() {
     if (!result) return
     const shareData = {
-      title: 'LuxeLens result',
+      title: 'XULURY result',
       text: `Identified: ${result.brand} ${result.model} (${result.confidence}% match)`,
       url: typeof window !== 'undefined' ? window.location.href : undefined,
     }
@@ -116,11 +116,31 @@ export function ResultView() {
 
   return (
     <AppShell>
+      {/* Mobile page header — mirrors iOS nav bar */}
+      <div className="flex items-center justify-between border-b border-border/70 px-4 py-3 md:hidden">
+        <Link
+          href="/scan"
+          className="flex items-center gap-1 text-sm font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Back to scan"
+        >
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          <span>Identification Result</span>
+        </Link>
+        <button
+          type="button"
+          onClick={handleShare}
+          className="text-sm font-semibold text-[var(--gold)] outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Save
+        </button>
+      </div>
+
       <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-10">
+        {/* Desktop back link */}
         <Button
           variant="ghost"
           size="sm"
-          className="mb-4 -ml-2"
+          className="mb-4 -ml-2 hidden md:inline-flex"
           render={
             <Link href="/scan">
               <ArrowLeft className="size-4" aria-hidden="true" />
@@ -246,8 +266,8 @@ export function ResultView() {
             </section>
 
             <p className="text-pretty text-xs leading-relaxed text-muted-foreground">
-              LuxeLens provides visual identification and indicative pricing
-              only. Results do not confirm authenticity.
+              XULURY provides visual identification and indicative pricing only.
+              Results do not confirm authenticity.
             </p>
           </div>
         )}

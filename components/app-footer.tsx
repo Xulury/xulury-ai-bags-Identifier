@@ -15,7 +15,7 @@ export function AppFooter() {
           <Link
             href="/"
             className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="LuxeLens home"
+            aria-label="XULURY home"
           >
             <Logo />
           </Link>
@@ -39,7 +39,7 @@ export function AppFooter() {
           purposes only.
         </p>
         <p className="mt-2 text-xs text-muted-foreground">
-          © {new Date().getFullYear()} LuxeLens. A demonstration project.
+          © {new Date().getFullYear()} XULURY. A demonstration project.
         </p>
       </div>
     </footer>

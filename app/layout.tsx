@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'LuxeLens — Identify luxury handbags in seconds',
+  title: 'XULURY — Identify luxury handbags in seconds',
   description:
     'Upload a single photo to identify the brand, model and estimated market value of a luxury handbag with AI-powered recognition.',
   generator: 'v0.app',
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     'handbag value',
   ],
   openGraph: {
-    title: 'LuxeLens — Identify luxury handbags in seconds',
+    title: 'XULURY — Identify luxury handbags in seconds',
     description:
       'AI-powered luxury handbag recognition. Identify the brand, model and estimated value from a single photo.',
     type: 'website',

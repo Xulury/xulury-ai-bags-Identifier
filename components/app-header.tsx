@@ -8,11 +8,12 @@ import { cn } from '@/lib/utils'
 
 const NAV_LINKS = [
   { href: '/how-it-works', label: 'How It Works' },
-  { href: '/history', label: 'History' },
+  { href: '/history', label: 'Saved' },
 ]
 
 export function AppHeader() {
   const pathname = usePathname()
+  const isHome = pathname === '/'
 
   return (
     <header className="safe-top sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
@@ -20,15 +21,13 @@ export function AppHeader() {
         <Link
           href="/"
           className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="LuxeLens home"
+          aria-label="XULURY home"
         >
           <Logo />
         </Link>
 
-        <nav
-          className="hidden items-center gap-1 md:flex"
-          aria-label="Primary"
-        >
+        {/* Desktop nav */}
+        <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
@@ -48,12 +47,14 @@ export function AppHeader() {
           />
         </nav>
 
-        {/* Mobile: compact scan action (full nav lives in the bottom bar) */}
-        <Button
-          size="sm"
-          className="h-9 rounded-full px-4 md:hidden"
-          render={<Link href="/scan">Scan</Link>}
-        />
+        {/* Mobile: compact scan action — hidden on home page */}
+        {!isHome && (
+          <Button
+            size="sm"
+            className="h-9 rounded-full px-4 md:hidden"
+            render={<Link href="/scan">Scan</Link>}
+          />
+        )}
       </div>
     </header>
   )

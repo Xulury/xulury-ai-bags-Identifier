@@ -1,10 +1,6 @@
 'use client'
 
 import Image from 'next/image'
-import { BadgeCheck } from 'lucide-react'
-import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { ConfidenceIndicator } from '@/components/confidence-indicator'
 import { formatPriceRange } from '@/lib/identify-service'
 import type { BagIdentificationResult } from '@/lib/types'
 
@@ -14,75 +10,84 @@ interface ResultCardProps {
 
 export function ResultCard({ result }: ResultCardProps) {
   return (
-    <Card className="overflow-hidden border-border/70 p-0">
-      <div className="flex flex-col sm:flex-row">
-        {/* Uploaded image */}
-        <div className="relative aspect-square w-full bg-background sm:w-2/5">
+    <div className="flex flex-col gap-4">
+      {/* Bag image — full width warm card */}
+      <div className="relative w-full overflow-hidden rounded-2xl bg-secondary/60">
+        <div className="relative aspect-[4/3] w-full">
           {result.uploadedImage ? (
             <Image
-              src={result.uploadedImage || '/placeholder.svg'}
+              src={result.uploadedImage}
               alt={`Your scan of the ${result.brand} ${result.model}`}
               fill
               className="object-cover"
-              sizes="(max-width: 640px) 100vw, 240px"
+              sizes="(max-width: 640px) 100vw, 672px"
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              No image
+            <div className="flex h-full items-center justify-center">
+              <svg
+                width="80"
+                height="80"
+                viewBox="0 0 80 80"
+                fill="none"
+                aria-hidden="true"
+                className="text-foreground/40"
+              >
+                <path
+                  d="M27 32V25C27 19.477 31.477 15 37 15H43C48.523 15 53 19.477 53 25V32"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+                <rect x="9" y="32" width="62" height="40" rx="7" stroke="currentColor" strokeWidth="1.8" />
+                <circle cx="40" cy="52" r="5.5" stroke="currentColor" strokeWidth="1.8" />
+              </svg>
             </div>
           )}
-          <Badge className="absolute left-3 top-3 gap-1 rounded-full bg-[var(--gold)] text-[var(--gold-foreground)]">
-            <BadgeCheck className="size-3.5" aria-hidden="true" />
-            Best Match
-          </Badge>
-
-          {/* Mobile Confidence Badge Overlay */}
-          <div className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full border border-border/40 bg-background/90 p-1 pr-2.5 shadow-sm backdrop-blur-md sm:hidden">
-            <ConfidenceIndicator value={result.confidence} size={24} className="[&>span]:hidden" />
-            <span className="text-xs font-semibold leading-none">{result.confidence}% Match</span>
-          </div>
         </div>
 
-        {/* Details */}
-        <div className="flex flex-1 flex-col gap-4 p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">{result.brand}</p>
-              <h2 className="font-serif text-2xl font-semibold leading-tight">
-                {result.model}
-              </h2>
-              <Badge
-                variant="secondary"
-                className="mt-2 rounded-full font-normal"
-              >
-                {result.category}
-              </Badge>
-            </div>
-            <div className="hidden text-center sm:block">
-              <ConfidenceIndicator value={result.confidence} />
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                match
-              </p>
-            </div>
-          </div>
+        {/* Match confidence badge — bottom left */}
+        <div className="absolute bottom-3 left-3 rounded-full border border-[var(--gold)] bg-background/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-foreground backdrop-blur-sm">
+          {result.confidence}% Match
+        </div>
+      </div>
 
-          <div className="rounded-xl border border-border bg-background/60 p-4">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              Estimated market price
-            </p>
-            <p className="mt-1 font-serif text-2xl font-semibold">
-              {formatPriceRange(
-                result.priceLow,
-                result.priceHigh,
-                result.currency,
-              )}
-            </p>
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Estimated price varies by condition, year and market availability.
-            </p>
+      {/* Brand / model / variant */}
+      <div>
+        <p className="text-sm font-semibold text-[var(--gold)]">{result.brand}</p>
+        <h2 className="font-serif text-3xl font-bold leading-tight text-foreground">
+          {result.model}
+        </h2>
+        <p className="mt-0.5 text-sm text-muted-foreground">{result.category}</p>
+      </div>
+
+      {/* Price card */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <p className="text-xs text-muted-foreground">Estimated market price</p>
+        <p className="mt-1 font-serif text-2xl font-semibold text-foreground">
+          {formatPriceRange(result.priceLow, result.priceHigh, result.currency)}
+        </p>
+      </div>
+
+      {/* Identified Details */}
+      <div>
+        <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gold)]">
+          Identified Details
+        </p>
+        <div className="divide-y divide-border">
+          <div className="flex items-center justify-between py-3">
+            <span className="text-sm text-muted-foreground">Brand</span>
+            <span className="text-sm font-semibold text-foreground">{result.brand}</span>
+          </div>
+          <div className="flex items-center justify-between py-3">
+            <span className="text-sm text-muted-foreground">Model</span>
+            <span className="text-sm font-semibold text-foreground">{result.model}</span>
+          </div>
+          <div className="flex items-center justify-between py-3">
+            <span className="text-sm text-muted-foreground">Variant</span>
+            <span className="text-sm font-semibold text-foreground">{result.category}</span>
           </div>
         </div>
       </div>
-    </Card>
+    </div>
   )
 }

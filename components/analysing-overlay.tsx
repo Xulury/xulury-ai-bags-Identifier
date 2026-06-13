@@ -1,15 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Image from 'next/image'
-import { Sparkles } from 'lucide-react'
-import { motion } from 'motion/react'
 
-const STATUSES = [
-  'Examining shape and silhouette',
-  'Comparing distinctive details',
-  'Searching the luxury catalogue',
-  'Preparing your match',
+const STAGES = [
+  { label: 'Brand recognition', key: 'brand' },
+  { label: 'Variant analysis', key: 'variant' },
+  { label: 'Price-source matching', key: 'price' },
+]
+
+const STATUS_TEXTS = [
+  'Checking visual details…',
+  'Matching model and variant…',
+  'Finding trusted sources…',
 ]
 
 const DURATION_MS = 2800
@@ -19,22 +21,19 @@ interface AnalysingOverlayProps {
   onComplete: () => void
 }
 
-export function AnalysingOverlay({
-  imageSrc,
-  onComplete,
-}: AnalysingOverlayProps) {
-  const [statusIndex, setStatusIndex] = useState(0)
+type StageStatus = 'done' | 'in-progress' | 'queued'
+
+function getStageStatus(progress: number, index: number): StageStatus {
+  const threshold = (index + 1) * (100 / STAGES.length)
+  const current = index * (100 / STAGES.length)
+  if (progress >= threshold) return 'done'
+  if (progress >= current) return 'in-progress'
+  return 'queued'
+}
+
+export function AnalysingOverlay({ onComplete }: AnalysingOverlayProps) {
   const [progress, setProgress] = useState(0)
 
-  // Rotate the status text.
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setStatusIndex((i) => (i + 1) % STATUSES.length)
-    }, DURATION_MS / STATUSES.length)
-    return () => clearInterval(interval)
-  }, [])
-
-  // Drive the circular progress + completion.
   useEffect(() => {
     const start = performance.now()
     let raf = 0
@@ -51,37 +50,61 @@ export function AnalysingOverlay({
     return () => cancelAnimationFrame(raf)
   }, [onComplete])
 
+  const statusIndex = progress < 33 ? 0 : progress < 66 ? 1 : 2
   const circumference = 2 * Math.PI * 52
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[var(--charcoal)] px-6 text-[var(--charcoal-foreground)]"
+      className="fixed inset-0 z-50 flex flex-col bg-background"
       role="status"
       aria-live="polite"
     >
-      <div className="flex w-full max-w-sm flex-col items-center gap-8">
-        {/* Image with scanning line + circular progress overlay */}
-        <div className="relative size-60 sm:size-64">
-          <div className="relative size-full overflow-hidden rounded-2xl border border-white/10">
-            <Image
-              src={imageSrc || '/placeholder.svg'}
-              alt="Analysing your handbag"
-              fill
-              className="object-cover opacity-90"
-              sizes="256px"
-            />
-            {/* Scanning line */}
-            <span
-              className="absolute inset-x-0 h-0.5 bg-[var(--gold)] shadow-[0_0_18px_4px_var(--gold)]"
-              style={{ animation: 'scan-line 2.2s ease-in-out infinite' }}
+      {/* Page content — centered column */}
+      <div className="flex flex-1 flex-col items-center px-6 pt-12">
+        <h1 className="mb-1 font-serif text-[1.85rem] font-semibold tracking-tight text-foreground">
+          Analyzing your bag
+        </h1>
+        <p className="mb-10 text-center text-sm leading-relaxed text-muted-foreground">
+          Our AI is checking visual details and matching trusted product
+          references.
+        </p>
+
+        {/* Circular progress ring around bag icon */}
+        <div className="relative flex items-center justify-center">
+          {/* Inner bag card */}
+          <div className="flex size-40 items-center justify-center rounded-2xl bg-secondary/60">
+            <svg
+              width="80"
+              height="80"
+              viewBox="0 0 80 80"
+              fill="none"
               aria-hidden="true"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[var(--charcoal)]/40 to-transparent" />
+              className="text-foreground/60"
+            >
+              <path
+                d="M27 32V25C27 19.477 31.477 15 37 15H43C48.523 15 53 19.477 53 25V32"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              />
+              <rect
+                x="9"
+                y="32"
+                width="62"
+                height="40"
+                rx="7"
+                stroke="currentColor"
+                strokeWidth="1.8"
+              />
+              <circle cx="40" cy="52" r="5.5" stroke="currentColor" strokeWidth="1.8" />
+            </svg>
           </div>
 
-          {/* Circular progress ring */}
+          {/* SVG ring */}
           <svg
-            className="absolute -inset-3 size-[calc(100%+1.5rem)] -rotate-90"
+            className="absolute -rotate-90"
+            width="196"
+            height="196"
             viewBox="0 0 120 120"
             aria-hidden="true"
           >
@@ -90,9 +113,8 @@ export function AnalysingOverlay({
               cy="60"
               r="52"
               fill="none"
-              stroke="currentColor"
+              stroke="var(--border)"
               strokeWidth="2"
-              className="text-white/10"
             />
             <circle
               cx="60"
@@ -106,47 +128,46 @@ export function AnalysingOverlay({
               strokeDashoffset={circumference - (progress / 100) * circumference}
             />
           </svg>
-
-          {/* Magical Sprinkles Effect */}
-          <motion.div
-            className="absolute -right-4 -top-4 z-10 text-[var(--gold)] drop-shadow-md"
-            animate={{ rotate: 180, scale: [1, 1.3, 1], opacity: [0.7, 1, 0.7] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            aria-hidden="true"
-          >
-            <Sparkles className="size-7" />
-          </motion.div>
-          
-          <motion.div
-            className="absolute top-1/2 -left-5 z-10 text-[var(--gold)]/80 drop-shadow-sm"
-            animate={{ rotate: -180, scale: [0.8, 1.1, 0.8], opacity: [0.5, 0.9, 0.5] }}
-            transition={{ duration: 3, repeat: Infinity, delay: 0.5, ease: 'easeInOut' }}
-            aria-hidden="true"
-          >
-            <Sparkles className="size-5" />
-          </motion.div>
-          
-          <motion.div
-            className="absolute -bottom-2 right-8 z-10 text-[var(--gold)]/90 drop-shadow-sm"
-            animate={{ rotate: 90, scale: [0.9, 1.2, 0.9], opacity: [0.6, 1, 0.6] }}
-            transition={{ duration: 2.5, repeat: Infinity, delay: 1, ease: 'easeInOut' }}
-            aria-hidden="true"
-          >
-            <Sparkles className="size-4" />
-          </motion.div>
         </div>
 
-        <div className="flex flex-col items-center gap-2 text-center">
-          <p className="font-serif text-xl font-semibold">Identifying…</p>
-          <motion.p
-            key={statusIndex}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="text-sm text-[var(--charcoal-foreground)]/70"
-          >
-            {STATUSES[statusIndex]}
-          </motion.p>
+        {/* Status text */}
+        <p className="mt-5 font-semibold text-foreground">
+          {STATUS_TEXTS[statusIndex]}
+        </p>
+
+        {/* Thin progress bar */}
+        <div className="mt-4 h-1 w-full max-w-xs overflow-hidden rounded-full bg-border">
+          <div
+            className="h-full rounded-full bg-[var(--gold)] transition-all duration-150"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+
+        {/* Stage checklist */}
+        <div className="mt-6 w-full max-w-xs divide-y divide-border">
+          {STAGES.map((stage, i) => {
+            const status = getStageStatus(progress, i)
+            return (
+              <div key={stage.key} className="flex items-center justify-between py-3">
+                <span className="text-sm font-medium text-foreground">
+                  {stage.label}
+                </span>
+                {status === 'done' && (
+                  <span className="text-sm font-semibold text-emerald-600">
+                    Done
+                  </span>
+                )}
+                {status === 'in-progress' && (
+                  <span className="text-sm font-semibold text-[var(--gold)]">
+                    In progress
+                  </span>
+                )}
+                {status === 'queued' && (
+                  <span className="text-sm text-muted-foreground">Queued</span>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
