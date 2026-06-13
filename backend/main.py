@@ -21,7 +21,7 @@ from services.db_service import (
 MAX_UPLOAD_SIZE = int(os.environ.get("MAX_UPLOAD_SIZE_MB", 10)) * 1024 * 1024
 CORS_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "*").split(",")
 
-app = FastAPI(title="LuxeLens API", version="1.0.0")
+app = FastAPI(title="XULURY API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
