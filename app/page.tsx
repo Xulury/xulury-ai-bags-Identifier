@@ -36,7 +36,7 @@ const FEATURES = [
 const MOBILE_STEPS = [
   { step: 1, label: 'Upload\nor capture' },
   { step: 2, label: 'AI scans\ndetails' },
-  { step: 3, label: 'Review\nsources' },
+  { step: 3, label: 'Review\nIdentification' },
 ]
 
 export default function HomePage() {
