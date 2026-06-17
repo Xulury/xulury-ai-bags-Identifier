@@ -102,7 +102,7 @@ export function AnalysingOverlay({ onComplete }: AnalysingOverlayProps) {
 
           {/* SVG ring */}
           <svg
-            className="absolute -rotate-90"
+            className={`absolute -rotate-90 ${progress >= 100 ? 'animate-pulse' : ''}`}
             width="196"
             height="196"
             viewBox="0 0 120 120"
@@ -131,14 +131,33 @@ export function AnalysingOverlay({ onComplete }: AnalysingOverlayProps) {
         </div>
 
         {/* Status text */}
-        <p className="mt-4 font-semibold text-foreground">
-          {STATUS_TEXTS[statusIndex]}
-        </p>
+        <div className="mt-4 flex items-center justify-center gap-2">
+          {progress >= 100 && (
+            <svg
+              className="size-4 animate-spin text-[var(--gold)]"
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+          )}
+          <p className="font-semibold text-foreground">
+            {progress >= 100 ? 'Finalizing results…' : STATUS_TEXTS[statusIndex]}
+          </p>
+        </div>
 
         {/* Thin progress bar */}
         <div className="mt-3 h-1 w-full max-w-xs overflow-hidden rounded-full bg-border">
           <div
-            className="h-full rounded-full bg-[var(--gold)] transition-all duration-150"
+            className={`h-full rounded-full bg-[var(--gold)] transition-all duration-150 ${progress >= 100 ? 'animate-pulse' : ''}`}
             style={{ width: `${progress}%` }}
           />
         </div>
