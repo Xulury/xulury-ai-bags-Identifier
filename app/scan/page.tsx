@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sun, Maximize, CloudOff, Sparkles, Loader2, AlertTriangle } from 'lucide-react'
 import { AppShell } from '@/components/app-shell'
@@ -30,6 +30,10 @@ export default function ScanPage() {
   const [result, setResult] = useState<BagIdentificationResult | null>(null)
   const [analysisDone, setAnalysisDone] = useState(false)
   const [notBagWarning, setNotBagWarning] = useState<string | null>(null)
+
+  // Stable reference — prevents AnalysingOverlay from restarting its RAF loop
+  // when a React re-render (e.g. from setResult) creates a new inline function.
+  const handleAnalysisComplete = useCallback(() => setAnalysisDone(true), [])
 
   // Manage object URL lifecycle for the preview.
   useEffect(() => {
@@ -82,7 +86,7 @@ export default function ScanPage() {
       {phase === 'analysing' && previewUrl && (
         <AnalysingOverlay
           imageSrc={previewUrl}
-          onComplete={() => setAnalysisDone(true)}
+          onComplete={handleAnalysisComplete}
         />
       )}
 

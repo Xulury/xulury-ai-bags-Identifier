@@ -29,7 +29,11 @@ export interface BagIdentificationResult {
   id: string
   brand: string
   model: string
+  /** Specific material or canvas type, e.g. "Monogram Canvas", "Togo Leather" */
+  variant?: string | null
   category: string
+  /** Official brand dimensions, e.g. "31 × 28 × 14 cm (12.2 × 11.0 × 5.5 in)" */
+  dimensions?: string | null
   priceLow: number
   priceHigh: number
   currency: string

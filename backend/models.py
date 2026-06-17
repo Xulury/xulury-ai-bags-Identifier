@@ -26,7 +26,9 @@ class BagIdentificationResult(BaseModel):
     id: str
     brand: str
     model: str
+    variant: Optional[str] = None
     category: str
+    dimensions: Optional[str] = None
     priceLow: int
     priceHigh: int
     currency: str

@@ -49,37 +49,84 @@ def identify_bag(scan_id: str, image_bytes: bytes, mime_type: str, uploaded_imag
     client = genai.Client(api_key=api_key)
 
     prompt = """
-    You are an expert luxury handbag identifier and appraiser.
+    You are an expert luxury handbag identifier and appraiser with deep knowledge of
+    official brand catalogs, materials, and specifications.
 
     STEP 1 — Is this a handbag?
-    First, check whether the image contains a handbag, purse, clutch, or luxury bag.
-    If the image does NOT show any kind of bag, return ONLY this JSON (nothing else):
+    Check whether the image contains a handbag, purse, clutch, or luxury bag.
+    If it does NOT, return ONLY this JSON (nothing else):
     {
       "is_bag": false,
       "not_bag_reason": "One short sentence describing what the image actually shows."
     }
 
-    STEP 2 — If it IS a handbag, analyze and identify it.
-    Return a JSON object with "is_bag": true plus ALL fields below.
-    If you are unsure of exact details, provide your best educated estimate.
+    STEP 2 — If it IS a handbag, apply these DISAMBIGUATION RULES before finalizing:
 
-    For 'model': use the SHORT common name only (e.g. "Neverfull MM", "Lady Dior Medium"). Do NOT include product codes.
-    For 'referenceImages': provide EXACTLY 4 items covering these specific views: "Front view", "Side view", "Back view", "Close up". Use placeholder URLs.
-    For 'alternativeMatches': provide 2-3 similar bags. Use placeholder imageUrls.
-    For 'sources': provide 5-6 shopping sources with REALISTIC data for each platform.
-      Include: official brand site, eBay, Amazon, Farfetch, Vestiaire Collective, and The RealReal.
-      For each source provide: a real or structured search URL, a realistic listing title, a price string, and a typical rating (null for official sites).
+    A. When the same material/canvas appears across many models of one brand
+       (e.g., Louis Vuitton Monogram Canvas covers Neverfull, Speedy, Alma, Artsy,
+       OnTheGo, Palermo, Totally, etc.), identify the exact model by examining:
+       1. SILHOUETTE & SHAPE — tote vs satchel vs barrel vs structured box
+       2. HANDLE CONFIGURATION — short handles only / long strap only / both;
+          handle drop; how they attach (brass rings, flat sewn, etc.)
+       3. OPENING STYLE — open top, zip, flap with turnlock/clasp, drawstring
+       4. WIDTH-TO-HEIGHT RATIO and gusset depth
+       5. INTERIOR LINING color (e.g., LV Neverfull has beige or red canvas lining)
+       6. HARDWARE DETAILS — buckle style, D-ring placement, zipper pull shape,
+          engraved logo on clasps
+       7. SIZE STAMP — heat stamp or embossed size code visible inside or on vachetta
 
-    Structure:
+    B. When similar logo-print materials could be confused between brands
+       (e.g., counterfeit or inspired-by patterns), look for:
+       1. Precision of logos — authentic LV has perfectly aligned, evenly-spaced
+          overlapping "LV", 4-petaled flowers, and 4-pointed stars inside circles
+       2. Canvas texture, backing color, and stitch pattern
+       3. Hardware engravings and quality
+       4. Edge finishing and heat-stamped serial codes
+
+    C. For ALL brands, prioritize distinguishing hardware, label placement,
+       stitching color, and any visible serial/date codes over pattern alone.
+
+    After disambiguation, return a JSON object with "is_bag": true plus ALL fields.
+
+    FIELD INSTRUCTIONS:
+    - 'brand': Exact brand name as the brand itself writes it (e.g., "Louis Vuitton", "Hermès", "CHANEL").
+    - 'model': SHORT common name with size designation (e.g., "Neverfull MM", "Birkin 30",
+      "Lady Dior Medium", "Classic Flap Small"). Do NOT include product codes.
+    - 'variant': The specific MATERIAL or CANVAS type ONLY — NOT the size or model name.
+      Examples: "Monogram Canvas", "Damier Ebene Canvas", "Damier Azur Canvas",
+      "Epi Leather", "Togo Leather", "Epsom Leather", "Clemence Leather",
+      "Caviar Leather", "Lambskin", "Saffiano Leather", "GG Supreme Canvas",
+      "Nylon with Leather Trim". If the material is unknown, use your best estimate.
+    - 'category': Bag type (e.g., "Tote Bag", "Shoulder Bag", "Crossbody Bag",
+      "Satchel", "Clutch", "Backpack", "Belt Bag").
+    - 'dimensions': Official dimensions EXACTLY as documented by the brand on their
+      website or catalog. Format: "W × H × D cm (W × H × D in)".
+      Use the size that matches the identified model variant (e.g., MM vs GM).
+      If you cannot confirm dimensions from official brand sources, omit this field (null).
+    - 'priceLow' / 'priceHigh': Current realistic market price range in USD integers.
+    - 'confidence': 0–100 integer. Lower it (e.g., 60–75) when material or model
+      disambiguation is uncertain; use 85–98 only when confident on all attributes.
+    - 'referenceImages': EXACTLY 4 items — "Front view", "Side view", "Back view",
+      "Close up". Use placeholder URLs.
+    - 'alternativeMatches': 2–3 bags that could plausibly be confused with this one
+      (same material, similar silhouette, or same brand). Use placeholder imageUrls.
+    - 'sources': 5–6 shopping sources. Include: official brand site, eBay, Amazon,
+      Farfetch, Vestiaire Collective, The RealReal. Provide real or structured
+      search URLs, realistic listing title, price string, and rating (null for
+      official sites).
+
+    JSON structure:
     {
       "is_bag": true,
       "brand": "Brand Name",
-      "model": "Short Model Name",
-      "category": "Category (e.g., Tote Bag, Crossbody, Shoulder Bag)",
+      "model": "Short Model Name with size",
+      "variant": "Material or Canvas Type",
+      "category": "Bag Category",
+      "dimensions": "W × H × D cm (W × H × D in)",
       "priceLow": integer,
       "priceHigh": integer,
       "currency": "USD",
-      "confidence": integer from 0 to 100,
+      "confidence": integer,
       "referenceImages": [
         { "id": "r1", "url": "placeholder", "caption": "Front view" },
         { "id": "r2", "url": "placeholder", "caption": "Side view" },
@@ -140,7 +187,9 @@ def identify_bag(scan_id: str, image_bytes: bytes, mime_type: str, uploaded_imag
 
         data['brand'] = raw_data.get("brand") or "Unknown Brand"
         data['model'] = raw_data.get("model") or "Unknown Model"
+        data['variant'] = raw_data.get("variant") or None
         data['category'] = raw_data.get("category") or "Handbag"
+        data['dimensions'] = raw_data.get("dimensions") or None
         data['currency'] = raw_data.get("currency") or "USD"
 
         for key in ["priceLow", "priceHigh", "confidence"]:
@@ -233,7 +282,9 @@ def _mock_response(scan_id: str) -> BagIdentificationResult:
         id=scan_id,
         brand="Hermès",
         model="Birkin 30",
+        variant="Togo Leather",
         category="Tote Bag",
+        dimensions="30 × 22 × 16 cm (11.8 × 8.7 × 6.3 in)",
         priceLow=15000,
         priceHigh=25000,
         currency="USD",

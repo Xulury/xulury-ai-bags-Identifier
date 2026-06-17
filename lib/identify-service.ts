@@ -108,10 +108,23 @@ export async function identifyHandbag(
   form.append('image', imageFile)
   
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? '/_/backend' : 'http://127.0.0.1:8000')
-  const res = await fetch(`${baseUrl}/api/v1/identify`, {
-    method: 'POST',
-    body: form,
-  })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 180_000) // 3 min hard timeout
+  let res: Response
+  try {
+    res = await fetch(`${baseUrl}/api/v1/identify`, {
+      method: 'POST',
+      body: form,
+      signal: controller.signal,
+    })
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      throw new Error('Identification timed out. Please try again on a faster connection.')
+    }
+    throw err
+  } finally {
+    clearTimeout(timeoutId)
+  }
 
   if (!res.ok) {
     const text = await res.text()

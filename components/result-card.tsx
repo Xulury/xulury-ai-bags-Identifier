@@ -84,8 +84,22 @@ export function ResultCard({ result }: ResultCardProps) {
           </div>
           <div className="flex items-center justify-between py-3">
             <span className="text-sm text-muted-foreground">Variant</span>
+            <span className="text-sm font-semibold text-foreground">
+              {result.variant ?? result.category}
+            </span>
+          </div>
+          <div className="flex items-center justify-between py-3">
+            <span className="text-sm text-muted-foreground">Category</span>
             <span className="text-sm font-semibold text-foreground">{result.category}</span>
           </div>
+          {result.dimensions && (
+            <div className="flex items-start justify-between py-3 gap-4">
+              <span className="text-sm text-muted-foreground shrink-0">Dimensions</span>
+              <span className="text-sm font-semibold text-foreground text-right">
+                {result.dimensions}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>
