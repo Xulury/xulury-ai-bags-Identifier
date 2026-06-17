@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 const STAGES = [
   { label: 'Brand recognition', key: 'brand' },
@@ -18,6 +18,7 @@ const DURATION_MS = 2800
 
 interface AnalysingOverlayProps {
   imageSrc: string
+  isComplete?: boolean
   onComplete: () => void
 }
 
@@ -31,14 +32,34 @@ function getStageStatus(progress: number, index: number): StageStatus {
   return 'queued'
 }
 
-export function AnalysingOverlay({ onComplete }: AnalysingOverlayProps) {
+export function AnalysingOverlay({ imageSrc, isComplete, onComplete }: AnalysingOverlayProps) {
   const [progress, setProgress] = useState(0)
+  
+  const isCompleteRef = useRef(isComplete)
+  useEffect(() => {
+    isCompleteRef.current = isComplete
+  }, [isComplete])
 
   useEffect(() => {
     const start = performance.now()
     let raf = 0
+    let accelStart = 0
+    let accelProgress = 0
+
     const tick = (now: number) => {
-      const pct = Math.min(100, ((now - start) / DURATION_MS) * 100)
+      let pct = 0
+      if (isCompleteRef.current) {
+         if (!accelStart) {
+             accelStart = now
+             accelProgress = ((now - start) / DURATION_MS) * 100
+         }
+         const accelElapsed = now - accelStart
+         pct = accelProgress + (accelElapsed / 300) * (100 - accelProgress)
+      } else {
+         pct = ((now - start) / DURATION_MS) * 100
+      }
+      
+      pct = Math.min(100, pct)
       setProgress(pct)
       if (pct < 100) {
         raf = requestAnimationFrame(tick)

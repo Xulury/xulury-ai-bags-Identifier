@@ -86,6 +86,7 @@ export default function ScanPage() {
       {phase === 'analysing' && previewUrl && (
         <AnalysingOverlay
           imageSrc={previewUrl}
+          isComplete={!!result}
           onComplete={handleAnalysisComplete}
         />
       )}

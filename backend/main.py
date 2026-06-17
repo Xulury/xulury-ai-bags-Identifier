@@ -32,7 +32,7 @@ app.add_middleware(
 )
 
 @app.get("/health")
-async def health_check():
+def health_check():
     supabase = get_client()
     status = {"status": "ok", "supabase_configured": supabase is not None}
     if supabase:
@@ -44,12 +44,12 @@ async def health_check():
     return status
 
 @app.post("/api/v1/identify", response_model=BagIdentificationResult)
-async def identify_endpoint(image: UploadFile = File(...)):
+def identify_endpoint(image: UploadFile = File(...)):
     if not image.content_type.startswith("image/") or image.content_type not in ["image/jpeg", "image/png", "image/webp", "image/jpg"]:
         raise HTTPException(status_code=400, detail="File provided is not a supported image.")
     
     try:
-        contents = await image.read()
+        contents = image.file.read()
         file_size = len(contents)
         
         if file_size > MAX_UPLOAD_SIZE:
@@ -104,7 +104,7 @@ async def identify_endpoint(image: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/v1/feedback")
-async def feedback_endpoint(payload: FeedbackPayload):
+def feedback_endpoint(payload: FeedbackPayload):
     try:
         save_feedback(payload.model_dump())
         return {"ok": True}
@@ -113,11 +113,11 @@ async def feedback_endpoint(payload: FeedbackPayload):
         raise HTTPException(status_code=500, detail="Internal server error saving feedback.")
 
 @app.get("/api/v1/scans")
-async def get_scans_history(limit: int = 20):
+def get_scans_history(limit: int = 20):
     return get_recent_scans(limit)
 
 @app.get("/api/v1/scans/{scan_id}")
-async def get_single_scan(scan_id: str):
+def get_single_scan(scan_id: str):
     scan = get_scan_by_id(scan_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found.")
@@ -125,7 +125,7 @@ async def get_single_scan(scan_id: str):
     return scan.get("result_json") or scan
 
 @app.get("/api/v1/products/{product_id}/images")
-async def get_product_images(product_id: str):
+def get_product_images(product_id: str):
     supabase = get_client()
     if not supabase:
         raise HTTPException(status_code=500, detail="Database not configured")
@@ -136,7 +136,7 @@ async def get_product_images(product_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/v1/scans/{scan_id}/sources")
-async def get_scan_sources(scan_id: str):
+def get_scan_sources(scan_id: str):
     supabase = get_client()
     if not supabase:
         raise HTTPException(status_code=500, detail="Database not configured")
