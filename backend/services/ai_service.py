@@ -9,6 +9,7 @@ from google import genai
 from google.genai import types
 from models import BagIdentificationResult, ShoppingSource
 from services.db_service import get_client
+from services.og_image_service import fetch_og_images
 
 def _clean_model_for_search(model: str) -> str:
     """Strip product codes (anything in parens/brackets) and truncate to 40 chars."""
@@ -221,12 +222,22 @@ def identify_bag(scan_id: str, image_bytes: bytes, mime_type: str, uploaded_imag
                 try: conf = int(conf)
                 except: conf = 80
             
+            alt_brand = alt.get("brand") or "Unknown"
+            alt_model_raw = alt.get("model") or "Unknown"
+            alt_db_imgs = get_db_product_images(
+                alt_brand, _clean_model_for_search(alt_model_raw)
+            )
+            alt_image_url = (
+                alt_db_imgs[0]["image_url"]
+                if alt_db_imgs and alt_db_imgs[0].get("image_url")
+                else fallback_source_url
+            )
             valid_alts.append({
                 "id": alt.get("id") or f"a{i}",
-                "brand": alt.get("brand") or "Unknown",
-                "model": alt.get("model") or "Unknown",
+                "brand": alt_brand,
+                "model": alt_model_raw,
                 "confidence": conf,
-                "imageUrl": fallback_source_url
+                "imageUrl": alt_image_url
             })
 
         sources = raw_data.get("sources", [])
@@ -244,6 +255,18 @@ def identify_bag(scan_id: str, image_bytes: bytes, mime_type: str, uploaded_imag
                 "url": src.get("url") or "#",
                 "imageUrl": fallback_source_url
             })
+
+        # Enrich source tile images via og:image scraping (free, no API key needed).
+        # Runs all URLs in parallel; falls back to fallback_source_url on any failure.
+        if valid_sources:
+            try:
+                source_urls = [s["url"] for s in valid_sources]
+                og_images = fetch_og_images(source_urls)
+                for i, og_url in enumerate(og_images):
+                    if og_url:
+                        valid_sources[i]["imageUrl"] = og_url
+            except Exception as _og_err:
+                print(f"Warning: og:image enrichment skipped: {_og_err}")
 
         model_short = _clean_model_for_search(data["model"])
         db_images = get_db_product_images(data["brand"], model_short)
