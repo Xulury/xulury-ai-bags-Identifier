@@ -1,102 +1,64 @@
-import re
-from concurrent.futures import ThreadPoolExecutor, as_completed
+"""
+Product image search via DuckDuckGo Images (free, no API key required).
+Replaces the og:image scraping approach which failed on JavaScript-rendered
+e-commerce sites. One search covers all source tiles for the same bag;
+per-alt searches fill in alternative match cards.
+"""
+from concurrent.futures import ThreadPoolExecutor, wait as _wait, ALL_COMPLETED
 from typing import Optional
 
-import httpx
-
-_TIMEOUT = 5.0  # seconds per request before giving up
-_MAX_WORKERS = 6  # max parallel fetches
-
-_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-}
-
-# Match og:image in both attribute orderings and both quote styles.
-# We only read the first ~60 KB of the page so patterns stay in <head>.
-_OG_PATTERNS = [
-    re.compile(
-        r'<meta\s[^>]*property=["\']og:image["\'][^>]*content=["\']([^"\']+)["\']',
-        re.IGNORECASE,
-    ),
-    re.compile(
-        r'<meta\s[^>]*content=["\']([^"\']+)["\'][^>]*property=["\']og:image["\']',
-        re.IGNORECASE,
-    ),
-    re.compile(
-        r'<meta\s[^>]*name=["\']og:image["\'][^>]*content=["\']([^"\']+)["\']',
-        re.IGNORECASE,
-    ),
-    re.compile(
-        r'<meta\s[^>]*content=["\']([^"\']+)["\'][^>]*name=["\']og:image["\']',
-        re.IGNORECASE,
-    ),
-]
+try:
+    from duckduckgo_search import DDGS
+    _DDG_AVAILABLE = True
+except ImportError:
+    _DDG_AVAILABLE = False
+    print("Warning: duckduckgo-search not installed — product image search disabled.")
 
 
-def _fetch_one(url: str) -> Optional[str]:
-    """Return the og:image URL from *url*, or None on any failure."""
-    if not url or url in ("#", "/", ""):
+def _search_one(query: str) -> Optional[str]:
+    """Run a single DDG image search. Returns the first valid thumbnail URL or None."""
+    if not _DDG_AVAILABLE:
         return None
     try:
-        with httpx.Client(
-            timeout=_TIMEOUT,
-            follow_redirects=True,
-            headers=_HEADERS,
-        ) as client:
-            # Stream so we can stop early once we have enough of <head>
-            with client.stream("GET", url) as response:
-                if response.status_code != 200:
-                    return None
-                chunks = []
-                total = 0
-                for chunk in response.iter_bytes(chunk_size=4096):
-                    chunks.append(chunk)
-                    total += len(chunk)
-                    if total >= 60_000:  # 60 KB is enough to cover <head>
-                        break
-                html = b"".join(chunks).decode("utf-8", errors="replace")
-
-        for pattern in _OG_PATTERNS:
-            m = pattern.search(html)
-            if m:
-                img_url = m.group(1).strip()
-                if img_url.startswith("http"):
-                    return img_url
+        with DDGS() as ddgs:
+            results = list(ddgs.images(query, max_results=3))
+            for r in results:
+                url = r.get("thumbnail") or r.get("image") or ""
+                if url.startswith("http"):
+                    return url
     except Exception:
         pass
     return None
 
 
-def fetch_og_images(urls: list) -> list:
+def search_product_images(queries: list, timeout: float = 3.0) -> list:
     """
-    Fetch og:image for each URL in *urls* in parallel.
-    Returns a list of the same length: each element is either
-    a string URL (success) or None (failed / not found).
-    Never raises.
-    """
-    if not urls:
-        return []
+    Search DuckDuckGo Images for every query in *queries*, in parallel.
 
-    results: list = [None] * len(urls)
+    Returns a list of the same length as *queries*: each slot is either
+    a URL string (success) or None (not found / timed out / error).
+
+    Total wall-clock time is capped at *timeout* seconds regardless of
+    how many queries are submitted. Never raises.
+    """
+    if not queries or not _DDG_AVAILABLE:
+        return [None] * len(queries)
+
+    results: list = [None] * len(queries)
+    executor = ThreadPoolExecutor(max_workers=min(6, len(queries)))
     try:
-        workers = min(_MAX_WORKERS, len(urls))
-        with ThreadPoolExecutor(max_workers=workers) as executor:
-            future_to_idx = {
-                executor.submit(_fetch_one, url): i
-                for i, url in enumerate(urls)
-            }
-            for future in as_completed(future_to_idx):
-                idx = future_to_idx[future]
-                try:
-                    results[idx] = future.result()
-                except Exception:
-                    pass
+        future_to_idx = {executor.submit(_search_one, q): i for i, q in enumerate(queries)}
+        done, _ = _wait(future_to_idx.keys(), timeout=timeout, return_when=ALL_COMPLETED)
+        for future in done:
+            idx = future_to_idx[future]
+            try:
+                results[idx] = future.result()
+            except Exception:
+                pass
     except Exception:
         pass
+    finally:
+        # Release the executor without blocking on stragglers — they finish in
+        # their own time (DDG's internal HTTP timeout) as daemon threads.
+        executor.shutdown(wait=False)
     return results

@@ -9,7 +9,7 @@ from google import genai
 from google.genai import types
 from models import BagIdentificationResult, ShoppingSource
 from services.db_service import get_client
-from services.og_image_service import fetch_og_images
+from services.og_image_service import search_product_images
 
 def _clean_model_for_search(model: str) -> str:
     """Strip product codes (anything in parens/brackets) and truncate to 40 chars."""
@@ -256,20 +256,57 @@ def identify_bag(scan_id: str, image_bytes: bytes, mime_type: str, uploaded_imag
                 "imageUrl": fallback_source_url
             })
 
-        # Enrich source tile images via og:image scraping (free, no API key needed).
-        # Runs all URLs in parallel; falls back to fallback_source_url on any failure.
-        if valid_sources:
-            try:
-                source_urls = [s["url"] for s in valid_sources]
-                og_images = fetch_og_images(source_urls)
-                for i, og_url in enumerate(og_images):
-                    if og_url:
-                        valid_sources[i]["imageUrl"] = og_url
-            except Exception as _og_err:
-                print(f"Warning: og:image enrichment skipped: {_og_err}")
-
+        # --- DB lookup for the identified bag (used for reference images AND source tiles) ---
         model_short = _clean_model_for_search(data["model"])
         db_images = get_db_product_images(data["brand"], model_short)
+
+        # If our own DB has a product photo, use it for all source tiles immediately
+        # (zero extra latency — we already made this DB call).
+        db_source_image = (
+            db_images[0]["image_url"]
+            if db_images and db_images[0].get("image_url")
+            else None
+        )
+        if db_source_image:
+            for src in valid_sources:
+                src["imageUrl"] = db_source_image
+
+        # --- DuckDuckGo image search for anything the DB didn't cover ---
+        # All source tiles show the same bag, so one query covers all of them.
+        # Alt matches that still have the fallback get individual queries.
+        # Everything runs in parallel, hard-capped at 3 s total.
+        sources_need_img = not db_source_image and bool(valid_sources)
+        alts_need_img = [
+            (i, a) for i, a in enumerate(valid_alts)
+            if a["imageUrl"] == fallback_source_url
+        ]
+        if sources_need_img or alts_need_img:
+            try:
+                queries: list = []
+                targets: list = []  # ("source" | "alt", alt_list_index)
+                if sources_need_img:
+                    queries.append(f"{data['brand']} {model_short} bag")
+                    targets.append(("source", -1))
+                for alt_i, alt in alts_need_img:
+                    queries.append(
+                        f"{alt['brand']} {_clean_model_for_search(alt['model'])} bag"
+                    )
+                    targets.append(("alt", alt_i))
+
+                img_results = search_product_images(queries, timeout=3.0)
+
+                for q_i, (target_type, target_idx) in enumerate(targets):
+                    img_url = img_results[q_i] if q_i < len(img_results) else None
+                    if not img_url:
+                        continue
+                    if target_type == "source":
+                        for src in valid_sources:
+                            src["imageUrl"] = img_url
+                    else:
+                        valid_alts[target_idx]["imageUrl"] = img_url
+            except Exception as _search_err:
+                print(f"Warning: image search enrichment skipped: {_search_err}")
+
         ref_images = []
         for i, img in enumerate(db_images):
             if img.get("image_url"):
