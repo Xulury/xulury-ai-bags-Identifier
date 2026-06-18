@@ -271,41 +271,8 @@ def identify_bag(scan_id: str, image_bytes: bytes, mime_type: str, uploaded_imag
             for src in valid_sources:
                 src["imageUrl"] = db_source_image
 
-        # --- DuckDuckGo image search for anything the DB didn't cover ---
-        # All source tiles show the same bag, so one query covers all of them.
-        # Alt matches that still have the fallback get individual queries.
-        # Everything runs in parallel, hard-capped at 3 s total.
-        sources_need_img = not db_source_image and bool(valid_sources)
-        alts_need_img = [
-            (i, a) for i, a in enumerate(valid_alts)
-            if a["imageUrl"] == fallback_source_url
-        ]
-        if sources_need_img or alts_need_img:
-            try:
-                queries: list = []
-                targets: list = []  # ("source" | "alt", alt_list_index)
-                if sources_need_img:
-                    queries.append(f"{data['brand']} {model_short} bag")
-                    targets.append(("source", -1))
-                for alt_i, alt in alts_need_img:
-                    queries.append(
-                        f"{alt['brand']} {_clean_model_for_search(alt['model'])} bag"
-                    )
-                    targets.append(("alt", alt_i))
-
-                img_results = search_product_images(queries, timeout=3.0)
-
-                for q_i, (target_type, target_idx) in enumerate(targets):
-                    img_url = img_results[q_i] if q_i < len(img_results) else None
-                    if not img_url:
-                        continue
-                    if target_type == "source":
-                        for src in valid_sources:
-                            src["imageUrl"] = img_url
-                    else:
-                        valid_alts[target_idx]["imageUrl"] = img_url
-            except Exception as _search_err:
-                print(f"Warning: image search enrichment skipped: {_search_err}")
+        # --- DuckDuckGo image search removed to optimize processing time ---
+        # User requested to fix the delay caused by finding images.
 
         ref_images = []
         for i, img in enumerate(db_images):

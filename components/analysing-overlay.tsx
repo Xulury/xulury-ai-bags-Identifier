@@ -122,33 +122,35 @@ export function AnalysingOverlay({ imageSrc, isComplete, onComplete }: Analysing
           </div>
 
           {/* SVG ring */}
-          <svg
-            className={`absolute -rotate-90 ${progress >= 100 ? 'animate-pulse' : ''}`}
-            width="196"
-            height="196"
-            viewBox="0 0 120 120"
-            aria-hidden="true"
-          >
-            <circle
-              cx="60"
-              cy="60"
-              r="52"
-              fill="none"
-              stroke="var(--border)"
-              strokeWidth="2"
-            />
-            <circle
-              cx="60"
-              cy="60"
-              r="52"
-              fill="none"
-              stroke="var(--gold)"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={circumference - (progress / 100) * circumference}
-            />
-          </svg>
+          <div className={`absolute inset-0 flex items-center justify-center ${progress >= 100 && !isComplete ? 'animate-spin' : ''}`}>
+            <svg
+              className={`-rotate-90 ${progress >= 100 && isComplete ? 'animate-pulse' : ''}`}
+              width="196"
+              height="196"
+              viewBox="0 0 120 120"
+              aria-hidden="true"
+            >
+              <circle
+                cx="60"
+                cy="60"
+                r="52"
+                fill="none"
+                stroke="var(--border)"
+                strokeWidth="2"
+              />
+              <circle
+                cx="60"
+                cy="60"
+                r="52"
+                fill="none"
+                stroke="var(--gold)"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={progress >= 100 && !isComplete ? circumference * 0.25 : circumference - (progress / 100) * circumference}
+              />
+            </svg>
+          </div>
         </div>
 
         {/* Status text */}

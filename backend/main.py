@@ -1,6 +1,7 @@
 import os
 import uuid
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from concurrent.futures import ThreadPoolExecutor
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -44,7 +45,7 @@ def health_check():
     return status
 
 @app.post("/api/v1/identify", response_model=BagIdentificationResult)
-def identify_endpoint(image: UploadFile = File(...)):
+def identify_endpoint(image: UploadFile = File(...), background_tasks: BackgroundTasks = BackgroundTasks()):
     if not image.content_type.startswith("image/") or image.content_type not in ["image/jpeg", "image/png", "image/webp", "image/jpg"]:
         raise HTTPException(status_code=400, detail="File provided is not a supported image.")
     
@@ -65,22 +66,30 @@ def identify_endpoint(image: UploadFile = File(...)):
             db_available = False
             print(f"Warning: Could not initialize scan in database: {error_msg}. Continuing without persistence.")
 
-        # 2. Upload Image (non-fatal)
+        # 2 & 3. Upload Image and Process AI concurrently
         image_url = None
-        if db_available:
-            image_url = upload_image(scan_id, contents, image.filename or "uploaded_image", image.content_type)
-            if not image_url:
-                print(f"Warning: Image upload to storage failed. Continuing without image URL.")
+        result = None
+        
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_upload = executor.submit(upload_image, scan_id, contents, image.filename or "uploaded_image", image.content_type) if db_available else None
+            future_ai = executor.submit(identify_bag, scan_id, contents, image.content_type, None)
+            
+            result = future_ai.result()
+            image_url = future_upload.result() if future_upload else None
 
-        # 3. Process AI (always runs — this is the core feature)
-        result = identify_bag(scan_id, contents, image.content_type, image_url)
+        if image_url:
+            result.uploadedImage = image_url
+            for src in result.sources:
+                if src.imageUrl == "/placeholder.svg":
+                    src.imageUrl = image_url
+            for alt in result.alternativeMatches:
+                if alt.imageUrl == "/placeholder.svg":
+                    alt.imageUrl = image_url
 
-        # 4. Save Candidates, Snapshots and Result (non-fatal)
+        # 4. Save Candidates, Snapshots and Result (in background)
         if db_available:
             alt_matches = [m.model_dump() for m in result.alternativeMatches]
             sources = [s.model_dump() for s in result.sources]
-            save_scan_candidates(scan_id, alt_matches)
-            save_scan_snapshots(scan_id, sources)
             update_data = {
                 "brand": result.brand,
                 "model": result.model,
@@ -91,7 +100,9 @@ def identify_endpoint(image: UploadFile = File(...)):
                 "currency": result.currency,
                 "result_json": result.model_dump(mode='json')
             }
-            update_scan_result(scan_id, update_data, status="completed")
+            background_tasks.add_task(save_scan_candidates, scan_id, alt_matches)
+            background_tasks.add_task(save_scan_snapshots, scan_id, sources)
+            background_tasks.add_task(update_scan_result, scan_id, update_data, "completed")
 
         return result
         
