@@ -1,9 +1,11 @@
+import Image from 'next/image'
 import Link from 'next/link'
-import { Zap, BadgeDollarSign, Library, Users } from 'lucide-react'
+import { ChevronRight, Zap, BadgeDollarSign, Library, Users } from 'lucide-react'
 import { AppShell } from '@/components/app-shell'
 import { HomeHero } from '@/components/home-hero'
 import { HowItWorksSteps } from '@/components/how-it-works-steps'
 import { FeatureCard } from '@/components/feature-card'
+import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 
 const FEATURES = [
@@ -33,101 +35,53 @@ const FEATURES = [
   },
 ]
 
-const MOBILE_STEPS = [
-  { step: 1, label: 'Upload\nor capture' },
-  { step: 2, label: 'AI scans\ndetails' },
-  { step: 3, label: 'Review\nIdentification' },
-]
-
 export default function HomePage() {
   return (
     <AppShell>
-      {/* ─── Mobile: iOS-style home ─── */}
-      <div className="flex flex-col md:hidden" style={{ padding: '4vw' }}>
-        {/* Headline — scales with viewport width */}
-        <h1
-          className="font-serif font-semibold leading-tight tracking-tight text-foreground"
-          style={{ fontSize: 'clamp(1.4rem, 6vw, 1.75rem)' }}
-        >
-          Identify your luxury bag from a single image.
-        </h1>
-        <p
-          className="mt-2 leading-relaxed text-muted-foreground"
-          style={{ fontSize: 'clamp(0.75rem, 3.5vw, 0.9rem)' }}
-        >
-          Scan the bag to find its brand, model, variant, estimated value and
-          verified buying sources.
-        </p>
+      {/* ─── Mobile: app-style home ─── */}
+      <div className="flex flex-col md:hidden">
+        {/* Wordmark + tagline */}
+        <div className="flex flex-col items-center px-6 pt-6 pb-1 text-center">
+          <Logo withTagline height={50} />
+        </div>
 
-        {/* Upload zone — width-relative padding so it scales on any phone */}
-        <Link href="/scan" className="mt-4 block w-full" aria-label="Upload bag image">
-          <div
-            className="flex w-full flex-col items-center justify-center rounded-2xl bg-secondary/60"
-            style={{ padding: '8vw 4vw' }}
-          >
-            <svg
-              viewBox="0 0 88 88"
-              fill="none"
-              aria-hidden="true"
-              className="text-foreground/70"
-              style={{ width: 'clamp(56px, 18vw, 88px)', height: 'clamp(56px, 18vw, 88px)', marginBottom: '4vw' }}
-            >
-              <path
-                d="M30 34V26C30 19.373 35.373 14 42 14H46C52.627 14 58 19.373 58 26V34"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <rect x="10" y="34" width="68" height="46" rx="8" stroke="currentColor" strokeWidth="2" />
-              <circle cx="44" cy="57" r="6" stroke="currentColor" strokeWidth="2" />
-            </svg>
-
-            <span
-              className="rounded-full bg-foreground font-bold uppercase tracking-widest text-background"
-              style={{
-                fontSize: 'clamp(0.6rem, 2.8vw, 0.75rem)',
-                padding: 'clamp(8px, 2.5vw, 12px) clamp(20px, 6vw, 28px)',
-              }}
-            >
-              Upload Bag Image
-            </span>
+        {/* Demo GIF */}
+        <div className="mt-5 px-5">
+          <div className="overflow-hidden rounded-3xl border border-border bg-secondary shadow-sm">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/Assets/xulury-demo.gif"
+              alt="XULURY scanning a handbag and returning a brand match"
+              className="aspect-square w-full object-cover"
+            />
           </div>
-        </Link>
+        </div>
+
+        {/* Upload CTA */}
+        <div className="mt-5 px-5">
+          <Link href="/scan" className="block w-full" aria-label="Upload bag image">
+            <div className="flex h-14 w-full items-center justify-center rounded-2xl bg-foreground text-base font-semibold tracking-wide text-background shadow-md transition-transform active:scale-[0.98]">
+              Upload Bag Image
+            </div>
+          </Link>
+          <p className="mt-3 text-center text-[13px] italic leading-relaxed text-muted-foreground">
+            Upload a photo to discover the brand, model, specifications and
+            estimated market value instantly.
+          </p>
+        </div>
 
         {/* How it works */}
-        <div className="mt-4">
-          <p
-            className="font-semibold uppercase text-[var(--gold)]"
-            style={{ fontSize: 'clamp(0.55rem, 2.5vw, 0.7rem)', letterSpacing: '0.14em', marginBottom: '2vw' }}
+        <div className="mt-7 px-5 pb-2">
+          <Link
+            href="/how-it-works"
+            className="flex items-center justify-between rounded-md py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            How It Works
-          </p>
-          <div className="grid w-full grid-cols-3" style={{ gap: '2vw' }}>
-            {MOBILE_STEPS.map(({ step, label }) => (
-              <div
-                key={step}
-                className="flex flex-col rounded-xl border border-border bg-card"
-                style={{ gap: '1.5vw', padding: '2.5vw' }}
-              >
-                <span
-                  className="flex items-center justify-center rounded-full border border-border font-semibold text-foreground"
-                  style={{
-                    width: 'clamp(18px, 5vw, 24px)',
-                    height: 'clamp(18px, 5vw, 24px)',
-                    fontSize: 'clamp(0.55rem, 2.5vw, 0.7rem)',
-                  }}
-                >
-                  {step}
-                </span>
-                <p
-                  className="whitespace-pre-line leading-snug text-foreground"
-                  style={{ fontSize: 'clamp(0.6rem, 2.8vw, 0.75rem)' }}
-                >
-                  {label}
-                </p>
-              </div>
-            ))}
-          </div>
+            <span className="text-sm font-semibold text-foreground">
+              How it works?
+            </span>
+            <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
+          </Link>
+          <HowItWorksSteps compact className="mt-3" />
         </div>
       </div>
 
@@ -149,7 +103,7 @@ export default function HomePage() {
         </section>
 
         {/* Features */}
-        <section className="border-y border-border/70 bg-card/50">
+        <section className="border-y border-border bg-secondary/40">
           <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
             <header className="mb-10 max-w-2xl">
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--gold)]">

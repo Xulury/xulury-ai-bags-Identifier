@@ -14,7 +14,7 @@ import {
 export const metadata: Metadata = {
   title: 'How It Works',
   description:
-    'Learn how LuxeLens identifies luxury handbags from a single photo using visual matching against a curated reference catalogue.',
+    'Learn how XULURY identifies luxury handbags from a single photo using visual matching against a curated reference catalogue.',
 }
 
 const principles = [
@@ -37,8 +37,8 @@ const principles = [
 
 const faqs = [
   {
-    q: 'Is LuxeLens an authentication service?',
-    a: 'No. LuxeLens identifies the likely brand and model of a handbag for reference and valuation context. It does not certify authenticity. For authentication, consult a qualified expert or the brand directly.',
+    q: 'Is XULURY an authentication service?',
+    a: 'No. XULURY identifies the likely brand and model of a handbag for reference and valuation context. It does not certify authenticity. For authentication, consult a qualified expert or the brand directly.',
   },
   {
     q: 'How accurate is the identification?',
@@ -70,7 +70,7 @@ export default function HowItWorksPage() {
             Identify any handbag in three considered steps
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-pretty leading-relaxed text-muted-foreground">
-            LuxeLens turns a single photograph into a confident identification,
+            XULURY turns a single photograph into a confident identification,
             a price range, and a set of reference images — without the guesswork.
           </p>
         </div>
@@ -105,7 +105,7 @@ export default function HowItWorksPage() {
               Frequently asked
             </h2>
           </div>
-          <Accordion type="single" collapsible className="mt-4">
+          <Accordion className="mt-4">
             {faqs.map((faq, i) => (
               <AccordionItem key={faq.q} value={`item-${i}`}>
                 <AccordionTrigger className="text-left font-medium">
@@ -127,12 +127,10 @@ export default function HowItWorksPage() {
             Upload a photo and get a confident match in moments.
           </p>
           <Button
-            asChild
             size="lg"
             className="mt-6 rounded-full bg-accent px-10 text-accent-foreground hover:bg-accent/90"
-          >
-            <Link href="/scan">Start a scan</Link>
-          </Button>
+            render={<Link href="/scan">Start a scan</Link>}
+          />
         </div>
       </section>
     </AppShell>

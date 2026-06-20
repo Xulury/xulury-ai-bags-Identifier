@@ -5,7 +5,7 @@ import { AppShell } from '@/components/app-shell'
 export const metadata: Metadata = {
   title: 'Privacy',
   description:
-    'How LuxeLens handles your photos and data. Your scans stay on your device.',
+    'How XULURY handles your photos and data. Your scans stay on your device.',
 }
 
 const highlights = [
@@ -39,10 +39,10 @@ export default function PrivacyPage() {
           Your trust, protected
         </p>
         <h1 className="mt-2 text-balance font-serif text-4xl leading-tight text-foreground md:text-5xl">
-          Privacy at LuxeLens
+          Privacy at XULURY
         </h1>
         <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
-          We built LuxeLens to respect the privacy of your collection. Here is
+          We built XULURY to respect the privacy of your collection. Here is
           exactly how your information is handled.
         </p>
 
@@ -95,7 +95,7 @@ export default function PrivacyPage() {
             <p className="mt-3">
               You can delete individual scans or clear your full history at any
               time from the history page. Because data is stored locally,
-              clearing your browser storage also removes everything LuxeLens has
+              clearing your browser storage also removes everything XULURY has
               saved.
             </p>
           </div>

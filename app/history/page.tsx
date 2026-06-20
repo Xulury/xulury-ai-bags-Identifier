@@ -111,9 +111,10 @@ export default function HistoryPage() {
               Identify your first handbag and it will appear here for safe
               keeping.
             </p>
-            <Button asChild className="mt-6 rounded-full px-8">
-              <Link href="/scan">Start a scan</Link>
-            </Button>
+            <Button
+              className="mt-6 rounded-full px-8"
+              render={<Link href="/scan">Start a scan</Link>}
+            />
           </div>
         ) : (
           <div className="mt-6 flex flex-col gap-3">

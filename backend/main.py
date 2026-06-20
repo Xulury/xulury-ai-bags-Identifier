@@ -1,7 +1,6 @@
 import os
 import uuid
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
-from concurrent.futures import ThreadPoolExecutor
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -11,12 +10,12 @@ load_dotenv(dotenv_path=env_path)
 backend_env = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path=backend_env, override=True)
 
-from models import BagIdentificationResult, FeedbackPayload
-from services.ai_service import identify_bag
+from models import BagIdentificationResult, ExtrasRequest, IdentificationExtras, FeedbackPayload
+from services.ai_service import identify_bag_core, identify_bag_extras
 from services.db_service import (
     upload_image, generate_image_hash, insert_initial_scan, update_scan_result,
-    save_scan_candidates, save_scan_snapshots, save_feedback, get_scan_by_id,
-    get_recent_scans, get_client
+    save_scan_candidates, save_scan_snapshots, merge_scan_extras, save_feedback,
+    get_scan_by_id, get_recent_scans, get_client
 )
 
 MAX_UPLOAD_SIZE = int(os.environ.get("MAX_UPLOAD_SIZE_MB", 10)) * 1024 * 1024
@@ -52,66 +51,65 @@ def identify_endpoint(image: UploadFile = File(...), background_tasks: Backgroun
     try:
         contents = image.file.read()
         file_size = len(contents)
-        
+
         if file_size > MAX_UPLOAD_SIZE:
             raise HTTPException(status_code=400, detail="Image exceeds maximum allowed size.")
-        
+
         scan_id = str(uuid.uuid4())
         image_hash = generate_image_hash(contents)
-        db_available = True
 
-        # 1. Insert Initial Scan (non-fatal — AI identification continues even if DB is down)
-        success, error_msg = insert_initial_scan(scan_id, image.filename or "uploaded_image", image.content_type, file_size, image_hash)
-        if not success:
-            db_available = False
-            print(f"Warning: Could not initialize scan in database: {error_msg}. Continuing without persistence.")
+        # The only work that needs to happen before we can respond is the core
+        # identification call. Alternative matches and shopping sources are
+        # fetched afterwards via /identify/{scan_id}/extras so the result page
+        # can render immediately instead of waiting on them. Persistence
+        # (initial-scan row, image upload, final status) is likewise pushed to
+        # background tasks so a slow/unreachable database can never stall the
+        # request.
+        result = identify_bag_core(scan_id, contents, image.content_type, None)
 
-        # 2 & 3. Upload Image and Process AI concurrently
-        image_url = None
-        result = None
-        
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            future_upload = executor.submit(upload_image, scan_id, contents, image.filename or "uploaded_image", image.content_type) if db_available else None
-            future_ai = executor.submit(identify_bag, scan_id, contents, image.content_type, None)
-            
-            result = future_ai.result()
-            image_url = future_upload.result() if future_upload else None
+        background_tasks.add_task(
+            insert_initial_scan, scan_id, image.filename or "uploaded_image", image.content_type, file_size, image_hash
+        )
+        background_tasks.add_task(
+            upload_image, scan_id, contents, image.filename or "uploaded_image", image.content_type
+        )
 
-        if image_url:
-            result.uploadedImage = image_url
-            for src in result.sources:
-                if src.imageUrl == "/placeholder.svg":
-                    src.imageUrl = image_url
-            for alt in result.alternativeMatches:
-                if alt.imageUrl == "/placeholder.svg":
-                    alt.imageUrl = image_url
-
-        # 4. Save Candidates, Snapshots and Result (in background)
-        if db_available:
-            alt_matches = [m.model_dump() for m in result.alternativeMatches]
-            sources = [s.model_dump() for s in result.sources]
-            update_data = {
-                "brand": result.brand,
-                "model": result.model,
-                "category": result.category,
-                "estimated_price_low": result.priceLow,
-                "estimated_price_high": result.priceHigh,
-                "confidence": result.confidence,
-                "currency": result.currency,
-                "result_json": result.model_dump(mode='json')
-            }
-            background_tasks.add_task(save_scan_candidates, scan_id, alt_matches)
-            background_tasks.add_task(save_scan_snapshots, scan_id, sources)
-            background_tasks.add_task(update_scan_result, scan_id, update_data, "completed")
+        update_data = {
+            "brand": result.brand,
+            "model": result.model,
+            "category": result.category,
+            "estimated_price_low": result.priceLow,
+            "estimated_price_high": result.priceHigh,
+            "confidence": result.confidence,
+            "currency": result.currency,
+            "result_json": result.model_dump(mode='json')
+        }
+        background_tasks.add_task(update_scan_result, scan_id, update_data, "completed")
 
         return result
-        
+
     except HTTPException:
         raise
     except Exception as e:
         import traceback
         traceback.print_exc()
         print(f"Error in identify_endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/identify/{scan_id}/extras", response_model=IdentificationExtras)
+def identify_extras_endpoint(scan_id: str, payload: ExtrasRequest, background_tasks: BackgroundTasks = BackgroundTasks()):
+    try:
+        extras = identify_bag_extras(payload.brand, payload.model, payload.variant, payload.category)
+
+        background_tasks.add_task(save_scan_candidates, scan_id, extras["alternativeMatches"])
+        background_tasks.add_task(save_scan_snapshots, scan_id, extras["sources"])
+        background_tasks.add_task(merge_scan_extras, scan_id, extras["alternativeMatches"], extras["sources"])
+
+        return extras
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"Error in identify_extras_endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/v1/feedback")

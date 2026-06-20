@@ -86,19 +86,15 @@ export function MobileSourceQuickView({ source, onClose }: MobileSourceQuickView
             </div>
 
             <Button
-              asChild
               size="lg"
               className="w-full h-14 rounded-full text-base font-medium shadow-md"
-            >
-              <a
-                href={source.url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLink className="mr-2 size-5" />
-                View Source Website
-              </a>
-            </Button>
+              render={
+                <a href={source.url} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="mr-2 size-5" />
+                  View Source Website
+                </a>
+              }
+            />
             
             <p className="mt-4 text-center text-xs text-muted-foreground">
               You will be redirected to {source.sourceName}.

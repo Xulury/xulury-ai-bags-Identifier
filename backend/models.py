@@ -1,17 +1,11 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
-class ReferenceImage(BaseModel):
-    id: str
-    url: str
-    caption: str
-
 class AlternativeMatch(BaseModel):
     id: str
     brand: str
     model: str
     confidence: int
-    imageUrl: str
 
 class ShoppingSource(BaseModel):
     sourceName: str
@@ -33,11 +27,23 @@ class BagIdentificationResult(BaseModel):
     priceHigh: int
     currency: str
     confidence: int
-    referenceImages: List[ReferenceImage]
-    alternativeMatches: List[AlternativeMatch]
+    alternativeMatches: List[AlternativeMatch] = Field(default_factory=list)
     sources: List[ShoppingSource] = Field(default_factory=list)
     uploadedImage: Optional[str] = None
     createdAt: str
+    # False right after the core /identify call — alternativeMatches/sources are
+    # filled in afterwards by a separate, faster follow-up call.
+    extrasReady: bool = False
+
+class ExtrasRequest(BaseModel):
+    brand: str
+    model: str
+    variant: Optional[str] = None
+    category: str
+
+class IdentificationExtras(BaseModel):
+    alternativeMatches: List[AlternativeMatch] = Field(default_factory=list)
+    sources: List[ShoppingSource] = Field(default_factory=list)
 
 class FeedbackPayload(BaseModel):
     scanId: str

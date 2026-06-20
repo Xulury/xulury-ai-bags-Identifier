@@ -13,21 +13,21 @@ const NAV_LINKS = [
 
 export function AppHeader() {
   const pathname = usePathname()
-  const isHome = pathname === '/'
 
   return (
-    <header className="safe-top sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
-      <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
+    // Mobile relies on the bottom tab bar for navigation — the desktop header
+    // (logo, links, CTA) only renders from md breakpoint up.
+    <header className="safe-top sticky top-0 z-40 hidden border-b border-border/70 bg-background/85 backdrop-blur-md md:block">
+      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link
           href="/"
           className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="XULURY home"
         >
-          <Logo />
+          <Logo height={26} />
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
+        <nav className="flex items-center gap-1" aria-label="Primary">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
@@ -46,15 +46,6 @@ export function AppHeader() {
             render={<Link href="/scan">Scan a Bag</Link>}
           />
         </nav>
-
-        {/* Mobile: compact scan action — hidden on home page */}
-        {!isHome && (
-          <Button
-            size="sm"
-            className="h-9 rounded-full px-4 md:hidden"
-            render={<Link href="/scan">Scan</Link>}
-          />
-        )}
       </div>
     </header>
   )

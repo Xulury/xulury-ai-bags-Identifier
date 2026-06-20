@@ -14,12 +14,12 @@ import {
 } from 'lucide-react'
 import { AppShell } from '@/components/app-shell'
 import { ResultCard } from '@/components/result-card'
-import { ReferenceImageCarousel } from '@/components/reference-image-carousel'
 import { AlternativeMatchCard } from '@/components/alternative-match-card'
 import { CorrectionSheet } from '@/components/correction-sheet'
 import { ShoppingSourceTile } from '@/components/shopping-source-tile'
 import { MobileSourceDrawer } from '@/components/mobile-source-drawer'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Dialog,
   DialogContent,
@@ -27,8 +27,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { getLastResult, updateScanStatus } from '@/lib/scan-storage'
-import { submitIdentificationFeedback } from '@/lib/identify-service'
+import { getLastResult, setLastResult, updateScanStatus } from '@/lib/scan-storage'
+import { fetchIdentificationExtras, submitIdentificationFeedback } from '@/lib/identify-service'
 import type { BagIdentificationResult } from '@/lib/types'
 import { toast } from 'sonner'
 
@@ -40,11 +40,45 @@ export function ResultView() {
   const [correctionOpen, setCorrectionOpen] = useState(false)
   const [sourceDrawerOpen, setSourceDrawerOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [extrasLoading, setExtrasLoading] = useState(false)
 
   useEffect(() => {
     setResult(getLastResult())
     setLoaded(true)
   }, [])
+
+  // The identify call only returns the core brand/model/price fields so the
+  // result page can render immediately. Sources and similar matches are
+  // fetched here in the background and merged in once ready.
+  useEffect(() => {
+    if (!result || result.extrasReady) return
+    let cancelled = false
+    setExtrasLoading(true)
+    fetchIdentificationExtras(result, result.uploadedImage)
+      .then(({ alternativeMatches, sources }) => {
+        if (cancelled) return
+        const merged: BagIdentificationResult = {
+          ...result,
+          alternativeMatches,
+          sources,
+          extrasReady: true,
+        }
+        setResult(merged)
+        setLastResult(merged)
+      })
+      .catch((err) => {
+        console.error('[v0] extras error:', err)
+        if (!cancelled) {
+          setResult((prev) => (prev ? { ...prev, extrasReady: true } : prev))
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setExtrasLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [result?.id, result?.extrasReady])
 
   async function handleConfirm() {
     if (!result) return
@@ -215,55 +249,70 @@ export function ResultView() {
               </div>
             </div>
 
-            {/* Reference images */}
-            {result.referenceImages && result.referenceImages.length > 0 && (
-              <section>
-                <h2 className="mb-3 font-serif text-xl font-semibold">
-                  Detailed view
-                </h2>
-                <ReferenceImageCarousel images={result.referenceImages} />
-              </section>
-            )}
-
             {/* Shopping Sources */}
-            {result.sources && result.sources.length > 0 && (
+            {(extrasLoading || result.sources.length > 0) && (
               <section>
                 <h2 className="mb-3 font-serif text-xl font-semibold">
                   Where to find it
                 </h2>
-                {/* Desktop: Grid */}
-                <div className="hidden md:grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {result.sources.map((source, idx) => (
-                    <ShoppingSourceTile key={idx} source={source} />
-                  ))}
-                </div>
-                {/* Mobile: Button */}
-                <div className="md:hidden">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between rounded-xl h-14 px-5 text-base border-border bg-card shadow-sm hover:border-accent hover:bg-accent/5"
-                    onClick={() => setSourceDrawerOpen(true)}
-                  >
-                    View Verified Sources
-                    <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-accent/20 px-1 text-xs font-semibold text-accent-foreground">
-                      {result.sources.length}
-                    </span>
-                  </Button>
-                </div>
+                {extrasLoading ? (
+                  <>
+                    {/* Desktop skeleton */}
+                    <div className="hidden grid-cols-2 gap-3 sm:grid-cols-3 md:grid">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <Skeleton key={i} className="aspect-square w-full rounded-xl" />
+                      ))}
+                    </div>
+                    {/* Mobile skeleton */}
+                    <Skeleton className="h-14 w-full rounded-xl md:hidden" />
+                  </>
+                ) : (
+                  <>
+                    {/* Desktop: Grid */}
+                    <div className="hidden md:grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      {result.sources.map((source, idx) => (
+                        <ShoppingSourceTile key={idx} source={source} />
+                      ))}
+                    </div>
+                    {/* Mobile: Button */}
+                    <div className="md:hidden">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-between rounded-xl h-14 px-5 text-base border-border bg-card shadow-sm hover:border-accent hover:bg-accent/5"
+                        onClick={() => setSourceDrawerOpen(true)}
+                      >
+                        View Verified Sources
+                        <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-accent/20 px-1 text-xs font-semibold text-accent-foreground">
+                          {result.sources.length}
+                        </span>
+                      </Button>
+                    </div>
+                  </>
+                )}
               </section>
             )}
 
             {/* Alternatives */}
-            <section>
-              <h2 className="mb-3 font-serif text-xl font-semibold">
-                Similar matches
-              </h2>
-              <div className="flex flex-col gap-3">
-                {result.alternativeMatches.map((m) => (
-                  <AlternativeMatchCard key={m.id} match={m} />
-                ))}
-              </div>
-            </section>
+            {(extrasLoading || result.alternativeMatches.length > 0) && (
+              <section>
+                <h2 className="mb-3 font-serif text-xl font-semibold">
+                  Similar matches
+                </h2>
+                {extrasLoading ? (
+                  <div className="flex flex-wrap gap-2.5">
+                    <Skeleton className="h-9 w-36 rounded-full" />
+                    <Skeleton className="h-9 w-28 rounded-full" />
+                    <Skeleton className="h-9 w-32 rounded-full" />
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2.5">
+                    {result.alternativeMatches.map((m) => (
+                      <AlternativeMatchCard key={m.id} match={m} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
 
             <p className="text-pretty text-xs leading-relaxed text-muted-foreground">
               XULURY provides visual identification and indicative pricing only.

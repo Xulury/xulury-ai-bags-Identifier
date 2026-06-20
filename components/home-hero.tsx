@@ -49,7 +49,9 @@ export function HomeHero() {
           </div>
 
           <div className="order-first md:order-last">
-            <FloatingBagHero />
+            <div className="relative overflow-hidden rounded-[2.5rem] border border-border bg-secondary/50 shadow-sm">
+              <FloatingBagHero />
+            </div>
           </div>
         </div>
       </div>

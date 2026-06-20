@@ -1,18 +1,11 @@
 // Core domain types for LuxeLens. These mirror the shape the future
 // FastAPI backend will return so the frontend won't need redesigning.
 
-export interface ReferenceImage {
-  id: string
-  url: string
-  caption: string
-}
-
 export interface AlternativeMatch {
   id: string
   brand: string
   model: string
   confidence: number // 0 - 100
-  imageUrl: string
 }
 
 export interface ShoppingSource {
@@ -38,12 +31,17 @@ export interface BagIdentificationResult {
   priceHigh: number
   currency: string
   confidence: number // 0 - 100
-  referenceImages: ReferenceImage[]
   alternativeMatches: AlternativeMatch[]
   sources: ShoppingSource[]
   /** Data URL of the user-uploaded image, used for previews + history. */
   uploadedImage?: string
   createdAt: string // ISO timestamp
+  /**
+   * False immediately after identification — alternativeMatches/sources are
+   * empty and get filled in by a separate, faster follow-up call so the
+   * result page can render the moment the core identification is back.
+   */
+  extrasReady?: boolean
 }
 
 export type ScanStatus = 'confirmed' | 'needs-review'

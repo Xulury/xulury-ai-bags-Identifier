@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { motion } from 'motion/react'
 
 const STAGES = [
   { label: 'Brand recognition', key: 'brand' },
@@ -34,7 +35,7 @@ function getStageStatus(progress: number, index: number): StageStatus {
 
 export function AnalysingOverlay({ imageSrc, isComplete, onComplete }: AnalysingOverlayProps) {
   const [progress, setProgress] = useState(0)
-  
+
   const isCompleteRef = useRef(isComplete)
   useEffect(() => {
     isCompleteRef.current = isComplete
@@ -49,16 +50,16 @@ export function AnalysingOverlay({ imageSrc, isComplete, onComplete }: Analysing
     const tick = (now: number) => {
       let pct = 0
       if (isCompleteRef.current) {
-         if (!accelStart) {
-             accelStart = now
-             accelProgress = ((now - start) / DURATION_MS) * 100
-         }
-         const accelElapsed = now - accelStart
-         pct = accelProgress + (accelElapsed / 300) * (100 - accelProgress)
+        if (!accelStart) {
+          accelStart = now
+          accelProgress = ((now - start) / DURATION_MS) * 100
+        }
+        const accelElapsed = now - accelStart
+        pct = accelProgress + (accelElapsed / 300) * (100 - accelProgress)
       } else {
-         pct = ((now - start) / DURATION_MS) * 100
+        pct = ((now - start) / DURATION_MS) * 100
       }
-      
+
       pct = Math.min(100, pct)
       setProgress(pct)
       if (pct < 100) {
@@ -72,7 +73,6 @@ export function AnalysingOverlay({ imageSrc, isComplete, onComplete }: Analysing
   }, [onComplete])
 
   const statusIndex = progress < 33 ? 0 : progress < 66 ? 1 : 2
-  const circumference = 2 * Math.PI * 52
 
   return (
     <div
@@ -80,8 +80,7 @@ export function AnalysingOverlay({ imageSrc, isComplete, onComplete }: Analysing
       role="status"
       aria-live="polite"
     >
-      {/* Page content — centered column */}
-      <div className="flex flex-1 flex-col items-center px-6 pt-6">
+      <div className="flex flex-1 flex-col items-center px-6 pt-8">
         <h1 className="mb-1 font-serif text-[1.6rem] font-semibold tracking-tight text-foreground">
           Analyzing your bag
         </h1>
@@ -90,95 +89,50 @@ export function AnalysingOverlay({ imageSrc, isComplete, onComplete }: Analysing
           references.
         </p>
 
-        {/* Circular progress ring around bag icon */}
-        <div className="relative flex items-center justify-center">
-          {/* Inner bag card */}
-          <div className="flex size-40 items-center justify-center rounded-2xl bg-secondary/60">
-            <svg
-              width="80"
-              height="80"
-              viewBox="0 0 80 80"
-              fill="none"
-              aria-hidden="true"
-              className="text-foreground/60"
-            >
-              <path
-                d="M27 32V25C27 19.477 31.477 15 37 15H43C48.523 15 53 19.477 53 25V32"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              />
-              <rect
-                x="9"
-                y="32"
-                width="62"
-                height="40"
-                rx="7"
-                stroke="currentColor"
-                strokeWidth="1.8"
-              />
-              <circle cx="40" cy="52" r="5.5" stroke="currentColor" strokeWidth="1.8" />
-            </svg>
+        {/* Scanning frame: the user's own photo with a moving scan beam */}
+        <div className="relative mx-auto aspect-square w-full max-w-[280px] overflow-hidden rounded-3xl border border-border bg-secondary shadow-md">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageSrc}
+            alt="Your uploaded handbag being analyzed"
+            className="h-full w-full object-cover"
+          />
+
+          {/* Subtle darkening so the gold beam reads clearly on any photo */}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-black/15" />
+
+          {/* Viewfinder corner brackets */}
+          <div className="pointer-events-none absolute inset-3" aria-hidden="true">
+            <span className="absolute left-0 top-0 size-5 rounded-tl-lg border-l-2 border-t-2 border-[var(--gold)]" />
+            <span className="absolute right-0 top-0 size-5 rounded-tr-lg border-r-2 border-t-2 border-[var(--gold)]" />
+            <span className="absolute bottom-0 left-0 size-5 rounded-bl-lg border-b-2 border-l-2 border-[var(--gold)]" />
+            <span className="absolute bottom-0 right-0 size-5 rounded-br-lg border-b-2 border-r-2 border-[var(--gold)]" />
           </div>
 
-          {/* SVG ring */}
-          <div className={`absolute inset-0 flex items-center justify-center ${progress >= 100 && !isComplete ? 'animate-spin' : ''}`}>
-            <svg
-              className={`-rotate-90 ${progress >= 100 && isComplete ? 'animate-pulse' : ''}`}
-              width="196"
-              height="196"
-              viewBox="0 0 120 120"
-              aria-hidden="true"
-            >
-              <circle
-                cx="60"
-                cy="60"
-                r="52"
-                fill="none"
-                stroke="var(--border)"
-                strokeWidth="2"
-              />
-              <circle
-                cx="60"
-                cy="60"
-                r="52"
-                fill="none"
-                stroke="var(--gold)"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeDasharray={circumference}
-                strokeDashoffset={progress >= 100 && !isComplete ? circumference * 0.25 : circumference - (progress / 100) * circumference}
-              />
-            </svg>
-          </div>
-        </div>
+          {/* Scanning beam — sweeps top to bottom and back, continuously */}
+          <motion.div
+            className="pointer-events-none absolute inset-x-0 h-20"
+            style={{ y: '-50%' }}
+            animate={{ top: ['0%', '100%', '0%'] }}
+            transition={{ duration: 2.4, ease: 'easeInOut', repeat: Infinity }}
+            aria-hidden="true"
+          >
+            <div className="h-full w-full bg-gradient-to-b from-transparent via-[var(--gold)]/35 to-transparent" />
+            <div className="absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 bg-[var(--gold)] shadow-[0_0_14px_3px_var(--gold)]" />
+          </motion.div>
 
-        {/* Status text */}
-        <div className="mt-4 flex items-center justify-center gap-2">
-          {progress >= 100 && (
-            <svg
-              className="size-4 animate-spin text-[var(--gold)]"
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-            </svg>
-          )}
-          <p className="font-semibold text-foreground">
+          {/* Live status pill */}
+          <div className="pointer-events-none absolute inset-x-3 bottom-3 flex items-center justify-center gap-1.5 rounded-full bg-background/90 px-3 py-1.5 text-[11px] font-medium text-foreground shadow-sm backdrop-blur-sm">
+            <span className="relative flex size-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--gold)] opacity-75" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-[var(--gold)]" />
+            </span>
             {progress >= 100 ? 'Finalizing results…' : STATUS_TEXTS[statusIndex]}
-          </p>
+          </div>
         </div>
 
         {/* Thin progress bar */}
-        <div className="mt-3 h-1 w-full max-w-xs overflow-hidden rounded-full bg-border">
+        <div className="mt-5 h-1 w-full max-w-xs overflow-hidden rounded-full bg-border">
           <div
             className={`h-full rounded-full bg-[var(--gold)] transition-all duration-150 ${progress >= 100 ? 'animate-pulse' : ''}`}
             style={{ width: `${progress}%` }}

@@ -1,7 +1,16 @@
 import type {
+  AlternativeMatch,
   BagIdentificationResult,
   FeedbackPayload,
+  ShoppingSource,
 } from '@/lib/types'
+
+function apiBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_API_URL ||
+    (process.env.NODE_ENV === 'production' ? '/_/backend' : 'http://127.0.0.1:8000')
+  )
+}
 
 /**
  * Formats a price range like "$1,500 – $2,200".
@@ -18,73 +27,6 @@ export function formatPriceRange(
   })
   return `${fmt.format(low)} – ${fmt.format(high)}`
 }
-
-// A small catalogue of mock results. The first entry matches the spec.
-const MOCK_RESULTS: Omit<
-  BagIdentificationResult,
-  'id' | 'uploadedImage' | 'createdAt'
->[] = [
-  {
-    brand: 'Louis Vuitton',
-    model: 'Neverfull MM',
-    category: 'Tote Bag',
-    priceLow: 1500,
-    priceHigh: 2200,
-    currency: 'USD',
-    confidence: 94,
-    referenceImages: [
-      { id: 'r1', url: '/bags/reference-1.png', caption: 'Front view' },
-      { id: 'r2', url: '/bags/reference-2.png', caption: 'Interior detail' },
-      { id: 'r3', url: '/bags/reference-3.png', caption: 'Handle hardware' },
-      { id: 'r4', url: '/bags/reference-4.png', caption: 'Side profile' },
-    ],
-    alternativeMatches: [
-      {
-        id: 'a1',
-        brand: 'Louis Vuitton',
-        model: 'Neverfull GM',
-        confidence: 78,
-        imageUrl: '/bags/alt-1.png',
-      },
-      {
-        id: 'a2',
-        brand: 'Louis Vuitton',
-        model: 'OnTheGo MM',
-        confidence: 61,
-        imageUrl: '/bags/alt-2.png',
-      },
-    ],
-    sources: [
-      {
-        sourceName: 'Official Site',
-        brand: 'Louis Vuitton',
-        bagName: 'Neverfull MM Tote in Monogram Canvas',
-        imageUrl: '/bags/reference-1.png',
-        price: '$1,690',
-        rating: null,
-        url: 'https://us.louisvuitton.com/eng-us/products/neverfull-mm-monogram-canvas',
-      },
-      {
-        sourceName: 'eBay',
-        brand: 'Louis Vuitton',
-        bagName: 'Louis Vuitton Neverfull MM Monogram – Authentic Pre-Owned',
-        imageUrl: '/bags/reference-2.png',
-        price: '$850 – $1,350',
-        rating: 4.8,
-        url: 'https://www.ebay.com/sch/i.html?_nkw=louis+vuitton+neverfull+mm',
-      },
-      {
-        sourceName: 'Farfetch',
-        brand: 'Louis Vuitton',
-        bagName: 'Pre-owned Neverfull MM tote bag',
-        imageUrl: '/bags/reference-3.png',
-        price: '$950 – $1,500',
-        rating: 4.6,
-        url: 'https://www.farfetch.com/shopping/women/louis-vuitton/bags/items.aspx',
-      },
-    ],
-  },
-]
 
 /**
  * Identify a handbag from a photo.
@@ -106,8 +48,8 @@ export async function identifyHandbag(
 ): Promise<BagIdentificationResult> {
   const form = new FormData()
   form.append('image', imageFile)
-  
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? '/_/backend' : 'http://127.0.0.1:8000')
+
+  const baseUrl = apiBaseUrl()
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 180_000) // 3 min hard timeout
   let res: Response
@@ -137,13 +79,57 @@ export async function identifyHandbag(
   }
 
   const result = await res.json()
-  
+
   // Read the uploaded file as a data URL so we can preview it everywhere
-  // (In a full app, the backend might return a storage URL, but this is fine for instant preview)
-  const uploadedImage = await fileToDataUrl(imageFile)
-  result.uploadedImage = uploadedImage
+  // instantly — the backend doesn't need to round-trip the photo back to us.
+  result.uploadedImage = await fileToDataUrl(imageFile)
 
   return result as BagIdentificationResult
+}
+
+/**
+ * Fetches alternative matches + shopping sources for an already-identified
+ * bag. This is deliberately a separate, lightweight (text-only, no image)
+ * call so the result page can render the core identification immediately
+ * and load this part in the background instead of making the user wait on it.
+ *
+ * Endpoint: POST /api/v1/identify/{scanId}/extras
+ */
+export async function fetchIdentificationExtras(
+  result: Pick<BagIdentificationResult, 'id' | 'brand' | 'model' | 'variant' | 'category'>,
+  uploadedImage?: string,
+): Promise<{ alternativeMatches: AlternativeMatch[]; sources: ShoppingSource[] }> {
+  const baseUrl = apiBaseUrl()
+  const res = await fetch(`${baseUrl}/api/v1/identify/${result.id}/extras`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      brand: result.brand,
+      model: result.model,
+      variant: result.variant,
+      category: result.category,
+    }),
+  })
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch sources and similar matches: ${res.statusText}`)
+  }
+
+  const extras = await res.json()
+
+  // "Where to find it" sources use the bag's own photo rather than a
+  // separately fetched product image.
+  const sources: ShoppingSource[] = Array.isArray(extras.sources)
+    ? extras.sources.map((s: ShoppingSource) => ({
+        ...s,
+        imageUrl: uploadedImage || s.imageUrl,
+      }))
+    : []
+
+  return {
+    alternativeMatches: Array.isArray(extras.alternativeMatches) ? extras.alternativeMatches : [],
+    sources,
+  }
 }
 
 /**
@@ -163,7 +149,7 @@ export async function identifyHandbag(
 export async function submitIdentificationFeedback(
   payload: FeedbackPayload,
 ): Promise<{ ok: true }> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? '/_/backend' : 'http://127.0.0.1:8000')
+  const baseUrl = apiBaseUrl()
   const res = await fetch(`${baseUrl}/api/v1/feedback`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -5,6 +5,4 @@ supabase
 google-genai
 pydantic
 python-dotenv
-duckduckgo-search
 httpx
-openai

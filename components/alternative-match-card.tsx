@@ -1,6 +1,5 @@
-import Image from 'next/image'
+import { Tag } from 'lucide-react'
 import type { AlternativeMatch } from '@/lib/types'
-import { Card } from '@/components/ui/card'
 
 interface AlternativeMatchCardProps {
   match: AlternativeMatch
@@ -8,26 +7,12 @@ interface AlternativeMatchCardProps {
 
 export function AlternativeMatchCard({ match }: AlternativeMatchCardProps) {
   return (
-    <Card className="flex items-center gap-4 border-border/70 p-3">
-      <div className="relative size-16 shrink-0 overflow-hidden rounded-lg border border-border bg-background">
-        <Image
-          src={match.imageUrl || '/placeholder.svg'}
-          alt={`${match.brand} ${match.model}`}
-          fill
-          className="object-cover"
-          sizes="64px"
-        />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs text-muted-foreground">{match.brand}</p>
-        <p className="truncate font-medium">{match.model}</p>
-      </div>
-      <div className="flex flex-col items-end">
-        <span className="font-serif text-lg font-semibold text-[var(--gold)]">
-          {match.confidence}%
-        </span>
-        <span className="text-[11px] text-muted-foreground">match</span>
-      </div>
-    </Card>
+    <div className="flex items-center gap-2.5 rounded-full border border-border bg-card px-4 py-2.5 shadow-sm">
+      <Tag className="size-3.5 shrink-0 text-[var(--gold)]" aria-hidden="true" />
+      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {match.brand}
+      </span>
+      <span className="text-sm font-semibold text-foreground">{match.model}</span>
+    </div>
   )
 }

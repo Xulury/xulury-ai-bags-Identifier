@@ -157,6 +157,23 @@ def save_scan_snapshots(scan_id: str, sources: list):
     except Exception as e:
         print(f"Error saving source snapshots: {e}")
 
+def merge_scan_extras(scan_id: str, alt_matches: list, sources: list) -> bool:
+    """Folds alternativeMatches/sources into the previously-saved result_json
+    once the (slower, separate) extras call finishes."""
+    if not supabase:
+        return False
+    try:
+        existing = get_scan_by_id(scan_id)
+        result_json = dict((existing or {}).get("result_json") or {})
+        result_json["alternativeMatches"] = alt_matches
+        result_json["sources"] = sources
+        result_json["extrasReady"] = True
+        supabase.table("scans").update({"result_json": result_json}).eq("id", scan_id).execute()
+        return True
+    except Exception as e:
+        print(f"Error merging scan extras: {e}")
+        return False
+
 def save_feedback(feedback_data: dict):
     if not supabase:
         if ALLOW_IN_MEMORY_FALLBACK:
