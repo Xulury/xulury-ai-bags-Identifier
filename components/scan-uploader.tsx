@@ -1,9 +1,10 @@
 'use client'
 
 import { useRef, useState, type DragEvent } from 'react'
-import { Camera, ImagePlus, UploadCloud } from 'lucide-react'
+import { Camera, ImagePlus, UploadCloud, SwitchCamera } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ImagePreview } from '@/components/image-preview'
+import { downscaleImage } from '@/lib/image-utils'
 import { cn } from '@/lib/utils'
 
 const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp']
@@ -26,8 +27,10 @@ export function ScanUploader({
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
+  // Default to the rear camera; the user can flip to the front camera.
+  const [cameraFacing, setCameraFacing] = useState<'environment' | 'user'>('environment')
 
-  function validateAndSelect(selected: File | undefined | null) {
+  async function validateAndSelect(selected: File | undefined | null) {
     if (!selected) return
     if (!ACCEPTED.includes(selected.type)) {
       setError('Please use a JPG, PNG or WEBP image.')
@@ -38,7 +41,13 @@ export function ScanUploader({
       return
     }
     setError(null)
-    onSelect(selected)
+    // Camera captures come straight off the sensor at full resolution, which
+    // is large enough to exceed localStorage's quota once base64-encoded —
+    // that's what was breaking the result page after taking a photo. Re-encode
+    // through canvas here so both camera and gallery selections end up a
+    // sane, consistent size.
+    const ready = await downscaleImage(selected)
+    onSelect(ready)
   }
 
   function handleDrop(e: DragEvent<HTMLDivElement>) {
@@ -119,6 +128,19 @@ export function ScanUploader({
         </Button>
       </div>
 
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="-mt-1 self-center text-muted-foreground"
+        onClick={() =>
+          setCameraFacing((prev) => (prev === 'environment' ? 'user' : 'environment'))
+        }
+      >
+        <SwitchCamera className="size-4" aria-hidden="true" />
+        Use {cameraFacing === 'environment' ? 'front' : 'rear'} camera
+      </Button>
+
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}
@@ -134,10 +156,11 @@ export function ScanUploader({
         onChange={(e) => validateAndSelect(e.target.files?.[0])}
       />
       <input
+        key={cameraFacing}
         ref={cameraInputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp"
-        capture="environment"
+        capture={cameraFacing}
         className="sr-only"
         onChange={(e) => validateAndSelect(e.target.files?.[0])}
       />

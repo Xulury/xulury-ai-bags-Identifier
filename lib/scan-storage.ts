@@ -69,7 +69,20 @@ export function addScanToHistory(
   }
   const history = getScanHistory().filter((h) => h.id !== item.id)
   history.unshift(item)
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(history))
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(history))
+  } catch {
+    // Quota exceeded (e.g. too many full-res images stored) — drop the
+    // oldest entries and retry once rather than crashing the caller.
+    try {
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(history.slice(0, Math.max(1, Math.floor(history.length / 2)))),
+      )
+    } catch {
+      // Still too big; give up silently, history just won't include this scan.
+    }
+  }
   notify()
 }
 
@@ -91,7 +104,18 @@ export function clearScanHistory(): void {
 /** Persist the most recent result so the result page can read it after routing. */
 export function setLastResult(result: BagIdentificationResult): void {
   if (typeof window === 'undefined') return
-  window.localStorage.setItem(RESULT_KEY, JSON.stringify(result))
+  try {
+    window.localStorage.setItem(RESULT_KEY, JSON.stringify(result))
+  } catch {
+    // Quota exceeded — clear history (the largest consumer of space, since
+    // it accumulates past images) and retry once before giving up.
+    try {
+      window.localStorage.removeItem(STORAGE_KEY)
+      window.localStorage.setItem(RESULT_KEY, JSON.stringify(result))
+    } catch {
+      // Out of options; the result page will fall back to whatever it can.
+    }
+  }
 }
 
 export function getLastResult(): BagIdentificationResult | null {
